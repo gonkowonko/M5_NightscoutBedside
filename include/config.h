@@ -39,3 +39,9 @@ struct AppConfig {
 // Reads the INI file from the (already mounted) SD card.
 // Returns false if the file could not be opened; cfg then holds defaults.
 bool loadConfig(const char* path, AppConfig& cfg);
+
+// Writes every setting this firmware manages back into the INI file, editing
+// matching keys in place so unknown keys, comments and the original firmware's
+// settings are kept. Wi-Fi sections are rewritten as [wlan1]..[wlanN].
+// The previous file is kept as /M5NS.PRV. Returns false on an SD error.
+bool saveConfig(const char* path, const AppConfig& cfg);

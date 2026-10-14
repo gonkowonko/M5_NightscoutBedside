@@ -1,6 +1,9 @@
 #include "config.h"
 
+#include <SD.h>
+
 #include "IniFile.h"
+#include "initext.h"
 
 namespace {
 
@@ -123,4 +126,81 @@ bool loadConfig(const char* path, AppConfig& cfg) {
                 cfg.token[0] ? "(set)" : "(none)", cfg.tz, cfg.wifiCount,
                 cfg.showMgdl ? "mg/dL" : "mmol/L");
   return true;
+}
+
+// ---- Writing ----------------------------------------------------------------
+
+namespace {
+
+String fmtHHMM(int minutes) {
+  char b[12];
+  snprintf(b, sizeof(b), "%02d:%02d", minutes / 60, minutes % 60);
+  return b;
+}
+
+String fmtNumber(float v) {
+  char b[16];
+  snprintf(b, sizeof(b), "%g", v);
+  return b;
+}
+
+bool copyFile(const char* from, const char* to) {
+  File in = SD.open(from, FILE_READ);
+  if (!in) return false;
+  File out = SD.open(to, FILE_WRITE);
+  if (!out) return false;
+  uint8_t buf[256];
+  while (int n = in.read(buf, sizeof(buf))) out.write(buf, n);
+  return true;
+}
+
+}  // namespace
+
+bool saveConfig(const char* path, const AppConfig& cfg) {
+  IniText ini;
+  if (File f = SD.open(path, FILE_READ)) ini.parse(f.readString());
+
+  ini.set("config", "nightscout", cfg.nightscout);
+  ini.set("config", "token", cfg.token);
+  ini.set("config", "tz", cfg.tz);
+  ini.set("config", "show_mgdl", cfg.showMgdl ? "1" : "0");
+  ini.set("config", "time_format", String(cfg.timeFormat));
+  ini.set("config", "date_format", String(cfg.dateFormat));
+  ini.set("config", "yellow_low", fmtNumber(cfg.yellowLow));
+  ini.set("config", "yellow_high", fmtNumber(cfg.yellowHigh));
+  ini.set("config", "red_low", fmtNumber(cfg.redLow));
+  ini.set("config", "red_high", fmtNumber(cfg.redHigh));
+  ini.set("config", "brightness1", String(cfg.brightness[0]));
+  ini.set("config", "brightness2", String(cfg.brightness[1]));
+  ini.set("config", "brightness3", String(cfg.brightness[2]));
+  ini.set("config", "stale_minutes", String(cfg.staleMinutes));
+  ini.set("config", "night_start", fmtHHMM(cfg.nightStart));
+  ini.set("config", "night_end", fmtHHMM(cfg.nightEnd));
+  ini.set("config", "night_brightness", String(cfg.nightBrightness));
+
+  ini.removeSectionsStartingWith("wlan");
+  for (int i = 0; i < cfg.wifiCount; i++) {
+    char section[8];
+    snprintf(section, sizeof(section), "wlan%d", i + 1);
+    ini.set(section, "ssid", cfg.ssid[i]);
+    ini.set(section, "pass", cfg.pass[i]);
+  }
+
+  // Write a temp file, keep the old one as M5NS.PRV, then swap in the new one.
+  const char* tmp = "/M5NS.TMP";
+  const char* prev = "/M5NS.PRV";
+  SD.remove(tmp);
+  {
+    File out = SD.open(tmp, FILE_WRITE);
+    if (!out) return false;
+    String text = ini.render();
+    if (out.print(text) != text.length()) return false;
+    out.close();
+  }
+  if (SD.exists(path)) {
+    SD.remove(prev);
+    if (!copyFile(path, prev)) return false;
+    SD.remove(path);
+  }
+  return SD.rename(tmp, path);
 }

@@ -8,6 +8,7 @@
 //   sensor      - DHT12 temperature in the standing base
 //   display     - flicker-free rendering of the clock, status and log pages
 //   eventlog    - in-memory log of Wi-Fi/Nightscout/NTP/sensor events
+//   webconfig   - settings page at http://m5clock.local, edits M5NS.INI
 //   main        - glue: buttons, brightness, building what the screen shows
 //
 // Future alarms belong next to buildModel(): they need the same reading,
@@ -23,6 +24,7 @@
 #include "network.h"
 #include "sensor.h"
 #include "timekeeping.h"
+#include "webconfig.h"
 
 // M5GFX copies one glyph bitmap onto the stack while drawing VLW fonts
 // (the clock digits are ~6 KB each), so give the loop task some headroom.
@@ -45,9 +47,9 @@ bool gPressedOnce = false;
 int gAppliedBrightness = -1;
 
 bool mountSd() {
-  // The SD card shares the SPI bus with the LCD (CS on GPIO 4). 6 open files:
-  // 5 fonts stay open for glyph streaming, plus one for the INI.
-  return SD.begin(GPIO_NUM_4, SPI, 25000000, "/sd", 6);
+  // The SD card shares the SPI bus with the LCD (CS on GPIO 4). The 5 fonts
+  // stay open for glyph streaming; saving settings needs up to 3 more.
+  return SD.begin(GPIO_NUM_4, SPI, 25000000, "/sd", 10);
 }
 
 bool isNight() {
@@ -175,7 +177,7 @@ void showStatusPage(uint32_t now) {
     line("Wi-Fi: %s  %d dBm", net.ssid, net.rssi);
   else
     line("Wi-Fi: not connected (%d configured)", gCfg.wifiCount);
-  line("IP: %s", net.connected ? net.ip : "-");
+  line("Web: %s  %s.local", net.connected ? net.ip : "-", kMdnsName);
   line("NS: %s", gCfg.nightscout[0] ? gCfg.nightscout : "(not set)");
   if (!net.everFetched) {
     line("Last fetch: never");
@@ -302,6 +304,29 @@ void watchEvents(uint32_t now) {
   wasStale = stale;
 }
 
+// Settings saved from the web page. Network settings (Nightscout, token,
+// Wi-Fi) are left alone: the web module restarts the clock for those.
+void applySettings(const AppConfig& s) {
+  if (strcmp(s.tz, gCfg.tz) != 0) {
+    strlcpy(gCfg.tz, s.tz, sizeof(gCfg.tz));
+    timeSetup(gCfg.tz);
+  }
+  gCfg.showMgdl = s.showMgdl;
+  gCfg.timeFormat = s.timeFormat;
+  gCfg.dateFormat = s.dateFormat;
+  memcpy(gCfg.brightness, s.brightness, sizeof(gCfg.brightness));
+  gCfg.yellowLow = s.yellowLow;
+  gCfg.yellowHigh = s.yellowHigh;
+  gCfg.redLow = s.redLow;
+  gCfg.redHigh = s.redHigh;
+  gCfg.staleMinutes = s.staleMinutes;
+  gCfg.nightStart = s.nightStart;
+  gCfg.nightEnd = s.nightEnd;
+  gCfg.nightBrightness = s.nightBrightness;
+  gAppliedBrightness = -1;  // re-evaluate on the next loop
+  displayInvalidate();
+}
+
 }  // namespace
 
 void setup() {
@@ -331,6 +356,7 @@ void setup() {
   if (displayFontsLoaded() < 5) logEvent("Fonts: only %d/5 found in /fonts", displayFontsLoaded());
   if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");
   networkBegin(gCfg);
+  webBegin(gCfg, kIniPath, {applySettings, buildModel});
   sensorBegin();
   sensorUpdate(millis());
   applyBrightness(millis());
@@ -338,6 +364,7 @@ void setup() {
 
 void loop() {
   M5.update();
+  webLoop();
   uint32_t now = millis();
   handleButtons(now);
   sensorUpdate(now);

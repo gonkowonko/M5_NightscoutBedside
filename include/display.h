@@ -21,7 +21,7 @@ struct ScreenModel {
   Trend trend = Trend::None;
   BgRange range = BgRange::InRange;
   bool stale = false;
-  char age[16] = "";    // "3 min ago"
+  char age[20] = "";    // "3 min ago" / "just now"
 };
 
 void displayBegin();       // M5.begin() and SD must already be up

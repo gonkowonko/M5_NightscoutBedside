@@ -41,6 +41,22 @@ Between `night_start` and `night_end` the screen dims to `night_brightness`. A p
 button brings normal brightness back for 30 seconds. While the screen is dimmed, that first press only wakes
 it, so fumbling in the dark doesn't change settings.
 
+## Settings page
+
+Open **http://m5clock.local** on a phone or computer on the same Wi-Fi. If that name doesn't
+resolve, use the IP address on the clock's status page (button B). There's no password: anyone on
+your network can open it, the same as the original firmware's web page.
+
+Everything in the table below can be changed there: Nightscout site and token, units and
+range thresholds, stale time, the three brightness levels, night dimming, 12/24 h and date
+format, time zone, and Wi-Fi networks. Passwords and the token are never sent to the page;
+leave a field blank to keep the current value.
+
+Saving writes `M5NS.INI` on the SD card. Only the keys this firmware manages are edited in place,
+so the original firmware's settings and your comments are left as they are. The previous file is
+kept as `M5NS.PRV`. Display settings apply immediately. Changing the Nightscout site, token or
+Wi-Fi restarts the clock.
+
 ## Status and log pages
 
 **Status** shows the current state: Wi-Fi network and signal, IP, Nightscout URL, last fetch
@@ -170,6 +186,8 @@ src/nightscout.cpp   HTTPS request + JSON parsing           (include/nightscout.
 src/sensor.cpp       DHT12 over I2C                         (include/sensor.h)
 src/display.cpp      layout A rendering, status/log pages   (include/display.h)
 src/eventlog.cpp     in-memory event log                    (include/eventlog.h)
+src/webconfig.cpp    settings web page + JSON API           (include/webconfig.h, webpage.h)
+include/initext.h    INI line editor used when saving       (host test: test/host)
 src/timekeeping.cpp  TZ/NTP and clock/date formatting       (include/timekeeping.h)
 include/glucose.h    units, range classification, trend parsing
 tools/               font generator and preview renderer

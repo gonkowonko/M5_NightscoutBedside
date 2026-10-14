@@ -1,10 +1,12 @@
 #include "network.h"
 
+#include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
 
 #include "eventlog.h"
 #include "timekeeping.h"
+#include "webconfig.h"
 
 namespace {
 
@@ -112,6 +114,8 @@ void networkTask(void*) {
     if (WiFi.status() == WL_CONNECTED) {
       if (!ntpStarted) {
         timeStartSync();
+        // Settings page at http://m5clock.local
+        if (MDNS.begin(kMdnsName)) MDNS.addService("http", "tcp", 80);
         ntpStarted = true;
       }
       if (!fetchedOnce || millis() - lastFetch >= kFetchIntervalMs) {
