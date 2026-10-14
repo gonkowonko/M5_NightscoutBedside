@@ -36,5 +36,5 @@ void displayUpdate(const ScreenModel& m);
 // Forces a full repaint on the next displayUpdate()/displayDebug().
 void displayInvalidate();
 
-// Debug page: one line of text per entry, redrawn only when changed.
+// Text page (status / log): one line per entry, redrawn only when changed.
 void displayDebug(const char* const* lines, int count);

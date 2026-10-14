@@ -5,6 +5,8 @@
 
 #include <M5Unified.h>
 
+#include "eventlog.h"
+
 namespace {
 
 constexpr uint8_t kAddress = 0x5C;
@@ -46,7 +48,9 @@ void sensorUpdate(uint32_t nowMs) {
   // Ride out the odd I2C glitch: only give up after three misses in a row.
   gFailures = readDht12() ? 0 : gFailures + 1;
   bool found = gFailures == 0 || (gFound && gFailures < 3);
-  if (found != gFound) Serial.printf("sensor: DHT12 %s\n", found ? "found" : "not found");
+  static bool first = true;
+  if (found != gFound || (first && !found)) logEvent("Sensor: DHT12 %s", found ? "found" : "not found");
+  first = false;
   gFound = found;
 }
 

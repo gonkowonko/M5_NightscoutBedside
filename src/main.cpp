@@ -6,7 +6,8 @@
 //   network     - background task: Wi-Fi, NTP, Nightscout fetch every 60 s
 //   nightscout  - HTTPS request + JSON parsing
 //   sensor      - DHT12 temperature in the standing base
-//   display     - flicker-free rendering of the clock screen / debug page
+//   display     - flicker-free rendering of the clock, status and log pages
+//   eventlog    - in-memory log of Wi-Fi/Nightscout/NTP/sensor events
 //   main        - glue: buttons, brightness, building what the screen shows
 //
 // Future alarms belong next to buildModel(): they need the same reading,
@@ -17,6 +18,7 @@
 
 #include "config.h"
 #include "display.h"
+#include "eventlog.h"
 #include "glucose.h"
 #include "network.h"
 #include "sensor.h"
@@ -35,7 +37,8 @@ constexpr uint32_t kWakeMs = 30 * 1000;  // full brightness after a press at nig
 constexpr uint32_t kFrameMs = 200;
 
 AppConfig gCfg;
-bool gDebugPage = false;
+enum class Page { Clock, Status, Log };
+Page gPage = Page::Clock;  // cycled with button B
 int gLevel = 0;                // index into gCfg.brightness (button A)
 uint32_t gLastPress = 0;
 bool gPressedOnce = false;
@@ -87,7 +90,7 @@ void handleButtons(uint32_t now) {
 
   if (a) gLevel = (gLevel + 1) % 3;
   if (b) {
-    gDebugPage = !gDebugPage;
+    gPage = gPage == Page::Clock ? Page::Status : gPage == Page::Status ? Page::Log : Page::Clock;
     displayInvalidate();
   }
   if (c) networkRequestRefresh();
@@ -144,7 +147,7 @@ ScreenModel buildModel() {
   return m;
 }
 
-void showDebugPage(uint32_t now) {
+void showStatusPage(uint32_t now) {
   static char buf[14][48];
   const char* lines[14];
   int n = 0;
@@ -162,7 +165,7 @@ void showDebugPage(uint32_t now) {
   tm lt;
   localtime_r(&t, &lt);
 
-  line("Debug  v%s   (B: back)", FW_VERSION);
+  line("Status  v%s   (B: log)", FW_VERSION);
   if (net.connected)
     line("Wi-Fi: %s  %d dBm", net.ssid, net.rssi);
   else
@@ -204,6 +207,96 @@ void showDebugPage(uint32_t now) {
   displayDebug(lines, n);
 }
 
+// "02:10", or "Tue 02:10" if not today, or "+12s" (since boot) before NTP.
+void formatLogTime(uint32_t atMs, uint32_t nowMs, char* out, size_t len) {
+  if (!timeIsValid()) {
+    snprintf(out, len, "+%lus", (unsigned long)(atMs / 1000));
+    return;
+  }
+  static const char* kDays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+  time_t now = time(nullptr);
+  time_t at = now - (time_t)((nowMs - atMs) / 1000);
+  tm today, t;
+  localtime_r(&now, &today);
+  localtime_r(&at, &t);
+  if (t.tm_yday == today.tm_yday && t.tm_year == today.tm_year)
+    snprintf(out, len, "%02d:%02d", t.tm_hour, t.tm_min);
+  else
+    snprintf(out, len, "%s %02d:%02d", kDays[t.tm_wday], t.tm_hour, t.tm_min);
+}
+
+void showLogPage(uint32_t now) {
+  static char buf[kLogEntries + 1][48];
+  const char* lines[kLogEntries + 1];
+  LogEntry entries[kLogEntries];
+  int n = logSnapshot(entries, kLogEntries);
+
+  strlcpy(buf[0], "Log  newest first   (B: clock)", sizeof(buf[0]));
+  lines[0] = buf[0];
+  for (int i = 0; i < n; i++) {
+    const LogEntry& e = entries[i];
+    char first[12], last[12];
+    formatLogTime(e.firstMs, now, first, sizeof(first));
+    if (e.count > 1) {
+      formatLogTime(e.lastMs, now, last, sizeof(last));
+      // "02:10-02:24 NS HTTP 502 x14"; the range is dropped if it's one minute.
+      if (strcmp(first, last) == 0)
+        snprintf(buf[i + 1], sizeof(buf[i + 1]), "%s %s x%u", first, e.text, e.count);
+      else
+        snprintf(buf[i + 1], sizeof(buf[i + 1]), "%s-%s %s x%u", first, last, e.text, e.count);
+    } else {
+      snprintf(buf[i + 1], sizeof(buf[i + 1]), "%s %s", first, e.text);
+    }
+    lines[i + 1] = buf[i + 1];
+  }
+  displayDebug(lines, n + 1);
+}
+
+const char* resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "power on";
+    case ESP_RST_SW: return "software restart";
+    case ESP_RST_PANIC: return "crash (panic)";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_BROWNOUT: return "brownout (power dip)";
+    case ESP_RST_DEEPSLEEP: return "wake from sleep";
+    case ESP_RST_EXT: return "reset button";
+    default: return "unknown reason";
+  }
+}
+
+// Events that main can see best: NTP sync and readings going stale.
+void watchEvents(uint32_t now) {
+  static uint32_t lastCheck = 0;
+  static bool timeWasValid = false;
+  static bool wasStale = false;
+  if (now - lastCheck < 1000) return;
+  lastCheck = now;
+
+  if (timeIsValid() && !timeWasValid) logEvent("Time synced (NTP)");
+  timeWasValid = timeIsValid();
+  if (!timeWasValid) return;
+
+  NsReading r;
+  networkLatest(r);
+  if (!r.valid) return;
+  int64_t ageMs = (int64_t)time(nullptr) * 1000 - r.dateMs;
+  bool stale = ageMs / 60000 > gCfg.staleMinutes;  // same rule as the screen
+  if (stale && !wasStale) {
+    NetStatus net;
+    networkStatus(net);
+    if (net.lastFetchOk)
+      logEvent("Stale: Nightscout has no new data");
+    else
+      logEvent("Stale: fetches failing");
+  } else if (!stale && wasStale) {
+    logEvent("Data current again");
+  }
+  wasStale = stale;
+}
+
 }  // namespace
 
 void setup() {
@@ -214,6 +307,7 @@ void setup() {
   M5.begin(m5cfg);
   M5.Display.setBrightness(gCfg.brightness[0] * 255 / 100);
   Serial.printf("\nM5 Bedside Clock %s\n", FW_VERSION);
+  logEvent("Boot v%s: %s", FW_VERSION, resetReason());
 
   displayMessage("Bedside Clock", "Starting...");
   while (!mountSd()) {
@@ -229,6 +323,8 @@ void setup() {
 
   timeSetup(gCfg.tz);
   displayBegin();
+  if (displayFontsLoaded() < 5) logEvent("Fonts: only %d/5 found in /fonts", displayFontsLoaded());
+  if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");
   networkBegin(gCfg);
   sensorUpdate(millis());
   applyBrightness(millis());
@@ -240,14 +336,16 @@ void loop() {
   handleButtons(now);
   sensorUpdate(now);
   applyBrightness(now);
+  watchEvents(now);
 
   static uint32_t lastFrame = 0;
   if (now - lastFrame >= kFrameMs) {
     lastFrame = now;
-    if (gDebugPage)
-      showDebugPage(now);
-    else
-      displayUpdate(buildModel());
+    switch (gPage) {
+      case Page::Clock: displayUpdate(buildModel()); break;
+      case Page::Status: showStatusPage(now); break;
+      case Page::Log: showLogPage(now); break;
+    }
   }
   delay(10);
 }

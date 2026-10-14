@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 
+#include "eventlog.h"
 #include "timekeeping.h"
 
 namespace {
@@ -48,6 +49,22 @@ void fetch() {
   bool ok = nightscoutFetch(*gCfg, reading, result, sizeof(result));
   Serial.printf("nightscout: %s\n", result);
 
+  // Log failures, and the first success after them; not every good fetch.
+  static int failures = 0;
+  static bool everOk = false;
+  if (!ok) {
+    logEvent("NS %s", result);
+    failures++;
+  } else if (!everOk) {
+    logEvent("NS first reading: %d mg/dL", reading.sgv);
+  } else if (failures > 0) {
+    logEvent("NS OK again after %d failure%s", failures, failures == 1 ? "" : "s");
+  }
+  if (ok) {
+    everOk = true;
+    failures = 0;
+  }
+
   Lock lock;
   if (ok) {
     gReading = reading;
@@ -64,14 +81,26 @@ void networkTask(void*) {
   bool ntpStarted = false;
   uint32_t lastFetch = 0;
   bool fetchedOnce = false;
+  bool wasConnected = false;
 
   for (;;) {
     if (WiFi.status() != WL_CONNECTED) {
+      if (wasConnected) {
+        logEvent("Wi-Fi lost");
+        wasConnected = false;
+      }
       // Tries every configured network and picks the strongest one in range.
-      if (gWifi.run(kWifiConnectTimeoutMs) == WL_CONNECTED) {
-        Serial.printf("wifi: connected to %s, %s\n", WiFi.SSID().c_str(),
-                      WiFi.localIP().toString().c_str());
+      auto st = static_cast<wl_status_t>(gWifi.run(kWifiConnectTimeoutMs));
+      if (st == WL_CONNECTED) {
+        wasConnected = true;
+        logEvent("Wi-Fi: %s %d dBm", WiFi.SSID().c_str(), WiFi.RSSI());
       } else {
+        if (st == WL_NO_SSID_AVAIL)
+          logEvent("Wi-Fi: no known network in range");
+        else if (st == WL_CONNECT_FAILED)
+          logEvent("Wi-Fi: connect failed (password?)");
+        else
+          logEvent("Wi-Fi: connect timed out (%d)", (int)st);
         updateWifiStatus();
         // Nothing in range: back off before scanning again.
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(kWifiRetryMs));

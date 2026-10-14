@@ -34,12 +34,33 @@ data). Each region is drawn off-screen in a small sprite band and pushed in one 
 | Button | Action |
 | --- | --- |
 | A (left) | Cycle brightness `brightness1` → `brightness2` → `brightness3` |
-| B (middle) | Toggle the debug page (Wi-Fi, IP, last fetch, heap, sensor, fonts) |
+| B (middle) | Cycle pages: clock → status → log → clock |
 | C (right) | Fetch from Nightscout now |
 
 Between `night_start` and `night_end` the screen dims to `night_brightness`. A press of any
 button brings normal brightness back for 30 seconds. While the screen is dimmed, that first press only wakes
 it, so fumbling in the dark doesn't change settings.
+
+## Status and log pages
+
+**Status** shows the current state: Wi-Fi network and signal, IP, Nightscout URL, last fetch
+time and result, latest reading, time sync and TZ, brightness, sensor, fonts loaded, memory
+and uptime.
+
+**Log** lists the last 13 notable events, newest first, so you can see *why* the clock was
+stale overnight. Repeats are collapsed, e.g. `02:10-02:24 NS HTTP 502 x14`.
+
+| Event | Example |
+| --- | --- |
+| Boot, with the reason for the restart | `Boot v1.0.0: brownout (power dip)` |
+| Wi-Fi connected / lost / not found | `Wi-Fi: HomeNet -61 dBm`, `Wi-Fi lost` |
+| Nightscout failures and recovery | `NS HTTP 502`, `NS OK again after 3 failures` |
+| Data going stale and why | `Stale: Nightscout has no new data`, `Stale: fetches failing` |
+| NTP sync, sensor found/lost, missing fonts | `Time synced (NTP)`, `Sensor: DHT12 lost` |
+
+Times are local (`02:10`, or `Tue 02:10` if not today); events before NTP sync show seconds
+since boot until the clock is set. The log lives in RAM and starts fresh after a restart,
+but the boot entry records why it restarted. Everything is also printed to the serial port.
 
 ## Build and flash
 
@@ -147,7 +168,8 @@ src/config.cpp       M5NS.INI parsing                      (include/config.h)
 src/network.cpp      background task: Wi-Fi, NTP, 60 s fetch (include/network.h)
 src/nightscout.cpp   HTTPS request + JSON parsing           (include/nightscout.h)
 src/sensor.cpp       DHT12 over I2C                         (include/sensor.h)
-src/display.cpp      layout A rendering and debug page      (include/display.h)
+src/display.cpp      layout A rendering, status/log pages   (include/display.h)
+src/eventlog.cpp     in-memory event log                    (include/eventlog.h)
 src/timekeeping.cpp  TZ/NTP and clock/date formatting       (include/timekeeping.h)
 include/glucose.h    units, range classification, trend parsing
 tools/               font generator and preview renderer
