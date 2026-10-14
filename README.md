@@ -155,7 +155,7 @@ Without a backup, flash the original release:
   folder. From inside that folder:
 
   ```bash
-  pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 --baud 921600 write_flash 0x1000 bootloader_0x1000.bin 0x8000 M5_NightscoutMon.ino.partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 M5_NightscoutMon.ino.bin
+  pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 write_flash 0x1000 bootloader_0x1000.bin 0x8000 M5_NightscoutMon.ino.partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 M5_NightscoutMon.ino.bin
   ```
 
 The SD card doesn't need changes. The original firmware ignores the new keys and the `fonts` folder.

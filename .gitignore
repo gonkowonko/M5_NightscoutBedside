@@ -3,3 +3,6 @@
 tools/.venv/
 __pycache__/
 .DS_Store
+
+# flash backups (contain Wi-Fi passwords and tokens)
+*-backup.bin
