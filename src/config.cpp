@@ -108,6 +108,7 @@ bool loadConfig(const char* path, AppConfig& cfg) {
   }
 
   if (r.integer("stale_minutes", v) && v > 0) cfg.staleMinutes = v;
+  r.number("temp_offset", cfg.tempOffset);
   if (r.integer("night_mode", v)) cfg.nightEnabled = v == 1;
   r.hhmm("night_start", cfg.nightStart);
   r.hhmm("night_end", cfg.nightEnd);
@@ -175,6 +176,7 @@ bool saveConfig(const char* path, const AppConfig& cfg) {
   ini.set("config", "brightness2", String(cfg.brightness[1]));
   ini.set("config", "brightness3", String(cfg.brightness[2]));
   ini.set("config", "stale_minutes", String(cfg.staleMinutes));
+  ini.set("config", "temp_offset", fmtNumber(cfg.tempOffset));
   ini.set("config", "night_mode", cfg.nightEnabled ? "1" : "0");
   ini.set("config", "night_start", fmtHHMM(cfg.nightStart));
   ini.set("config", "night_end", fmtHHMM(cfg.nightEnd));

@@ -143,7 +143,8 @@ ScreenModel buildModel() {
     strlcpy(m.time, "--:--", sizeof(m.time));
   }
 
-  if (sensorFound()) snprintf(m.temp, sizeof(m.temp), "%ld\xC2\xB0" "C", lroundf(sensorTemperature()));
+  if (sensorFound())
+    snprintf(m.temp, sizeof(m.temp), "%ld\xC2\xB0" "C", lroundf(sensorTemperature() + gCfg.tempOffset));
 
   NsReading r;
   networkLatest(r);
@@ -226,7 +227,8 @@ void showStatusPage(uint32_t now) {
   line("Brightness: %d%% (level %d)%s", targetBrightness(now), gLevel + 1,
        !gCfg.nightEnabled ? "" : isNight() ? ", night dim on" : ", night dim off-hours");
   if (sensorFound())
-    line("Sensor: DHT12 found, %.1f C, %.0f %%RH", sensorTemperature(), sensorHumidity());
+    line("Sensor: %.1f C (raw %.1f), %.0f %%RH", sensorTemperature() + gCfg.tempOffset,
+         sensorTemperature(), sensorHumidity());
   else
     line("Sensor: DHT12 not found");
   line("Fonts: %d/5 loaded from SD /fonts", displayFontsLoaded());
@@ -346,6 +348,7 @@ void applySettings(const AppConfig& s) {
   gCfg.redLow = s.redLow;
   gCfg.redHigh = s.redHigh;
   gCfg.staleMinutes = s.staleMinutes;
+  gCfg.tempOffset = s.tempOffset;
   gCfg.nightEnabled = s.nightEnabled;
   gCfg.nightStart = s.nightStart;
   gCfg.nightEnd = s.nightEnd;

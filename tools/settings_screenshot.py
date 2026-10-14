@@ -19,7 +19,7 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 CONFIG = {
     "nightscout": "https://yoursite.example.com", "tokenSet": True, "showMgdl": False,
-    "redLow": 3.9, "yellowLow": 4.5, "yellowHigh": 9.0, "redHigh": 11.0, "staleMinutes": 10,
+    "redLow": 3.9, "yellowLow": 4.5, "yellowHigh": 9.0, "redHigh": 11.0, "staleMinutes": 10, "tempOffset": -2,
     "brightness": [40, 100, 10], "nightMode": True, "nightBrightness": 5,
     "nightStart": "22:00", "nightEnd": "07:00", "timeFormat": 0, "dateFormat": 0,
     "tz": "GMT0BST,M3.5.0/1,M10.5.0", "version": "1.1.0", "build": "Oct 14 2026 14:34:15",

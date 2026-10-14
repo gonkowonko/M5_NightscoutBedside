@@ -75,6 +75,7 @@ void handleGetConfig() {
   doc["yellowHigh"] = roundTo(c.yellowHigh, c.showMgdl);
   doc["redHigh"] = roundTo(c.redHigh, c.showMgdl);
   doc["staleMinutes"] = c.staleMinutes;
+  doc["tempOffset"] = roundf(c.tempOffset * 10) / 10;
   JsonArray b = doc["brightness"].to<JsonArray>();
   for (int v : c.brightness) b.add(v);
   doc["nightMode"] = c.nightEnabled;
@@ -152,6 +153,9 @@ void handlePostConfig() {
 
   next.staleMinutes = in["staleMinutes"] | 0;
   if (next.staleMinutes < 1 || next.staleMinutes > 240) return sendError("Stale minutes must be 1–240");
+  next.tempOffset = in["tempOffset"] | 0.0f;
+  if (!(next.tempOffset >= -10 && next.tempOffset <= 10)) return sendError("Temperature correction must be -10 to +10 °C");
+  next.tempOffset = roundf(next.tempOffset * 10) / 10;
 
   for (int i = 0; i < 3; i++) {
     next.brightness[i] = in["brightness"][i] | 0;

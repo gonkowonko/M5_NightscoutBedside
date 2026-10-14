@@ -172,7 +172,7 @@ The log is kept in memory, so it starts fresh after a restart, but the first ent
 ## Settings page
 
 Everything is editable at **http://m5clock.local**: Nightscout site and token, units, range thresholds, stale
-time, brightness levels, night dimming, 12/24-hour time, date format, time zone and Wi-Fi.
+time, brightness levels, night dimming, 12/24-hour time, date format, time zone, temperature correction and Wi-Fi.
 
 - Display changes apply instantly. Changing Nightscout or Wi-Fi saves and restarts the clock.
 - The token and Wi-Fi password are never sent to the browser. Leave those fields blank to keep them.
@@ -216,6 +216,7 @@ New in this firmware (ignored by the original):
 | --- | --- | --- |
 | `tz` | `GMT0BST,M3.5.0/1,M10.5.0` | [POSIX time zone](https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html), so summer time switches automatically. Presets on the settings page. |
 | `stale_minutes` | `10` | Readings older than this are shown as stale |
+| `temp_offset` | `0` | Added to the temperature sensor reading, in °C (e.g. `-3` if it reads high) |
 | `night_mode` | `0` | `1` turns night dimming on |
 | `night_start`, `night_end` | `22:00`, `07:00` | Night dimming hours (local time) |
 | `night_brightness` | `5` | Brightness during the night, in % (`0` = backlight off) |
@@ -250,6 +251,7 @@ The SD card doesn't need changing.
 | Clock shows `--:--` | No internet yet: check Wi-Fi on the status page. |
 | `---` instead of a reading | Check *Result* on the status page: `HTTP 401` means a wrong or missing token. |
 | No temperature | The DHT12 is in the stand. The log's `I2C:` line should list `5C`. |
+| Temperature reads high | The sensor sits under the warm M5Stack. Set a temperature correction on the settings page. |
 | Blocky digits | The `fonts` folder is missing from the SD card (status page: *Fonts 0/5*). |
 | `m5clock.local` is slow or doesn't open | Use the IP address from the status page. Some apps wait ~5 s for an IPv6 answer first. |
 

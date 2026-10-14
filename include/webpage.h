@@ -115,6 +115,9 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 <option value="">Custom…</option>
 </select>
 <input id="tz" style="margin-top:8px" spellcheck="false" autocapitalize="off" placeholder="POSIX TZ string">
+<label for="tempOffset">Temperature correction (°C)</label>
+<input id="tempOffset" type="number" step="0.5" min="-10" max="10" inputmode="decimal">
+<p class="hint">Added to the stand's sensor reading, e.g. −3 if it reads 3° high. The sensor sits under the warm M5Stack, so it usually reads a little high.</p>
 </section>
 
 <section><h2>Wi-Fi</h2>
@@ -151,7 +154,7 @@ async function load(){
   $('token').placeholder=cfg.tokenSet?'Token set — leave blank to keep':'No token';
   $('unit').value=cfg.showMgdl?1:0;
   thr.forEach(k=>$(k).value=cfg.showMgdl?cfg[k]:Number(cfg[k]).toFixed(1));
-  $('stale').value=cfg.staleMinutes;
+  $('stale').value=cfg.staleMinutes;$('tempOffset').value=cfg.tempOffset;
   ['b1','b2','b3'].forEach((k,i)=>$(k).value=cfg.brightness[i]);
   $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
@@ -179,7 +182,7 @@ function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
 
 $('save').onclick=async()=>{
   const body={nightscout:$('nightscout').value.trim(),token:$('token').value.trim(),clearToken:$('clearToken').checked,
-    showMgdl:$('unit').value==='1',staleMinutes:+$('stale').value,
+    showMgdl:$('unit').value==='1',staleMinutes:+$('stale').value,tempOffset:parseFloat($('tempOffset').value)||0,
     brightness:['b1','b2','b3'].map(k=>+$(k).value),nightMode:$('nightMode').checked,nightBrightness:+$('nightB').value,
     nightStart:$('nightStart').value,nightEnd:$('nightEnd').value,
     timeFormat:+$('timeFormat').value,dateFormat:+$('dateFormat').value,tz:$('tz').value.trim(),

@@ -26,6 +26,7 @@ struct AppConfig {
 
   // New keys (this firmware only).
   int staleMinutes = 10;
+  float tempOffset = 0;      // added to the DHT12 reading, degrees C
   bool nightEnabled = false;  // opt-in: dim between nightStart and nightEnd
   int nightStart = 22 * 60;  // minutes after midnight
   int nightEnd = 7 * 60;
