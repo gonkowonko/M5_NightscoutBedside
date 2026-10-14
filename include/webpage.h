@@ -116,7 +116,7 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 </select>
 <input id="tz" style="margin-top:8px" spellcheck="false" autocapitalize="off" placeholder="POSIX TZ string">
 <label for="tempOffset">Temperature correction (°C)</label>
-<input id="tempOffset" type="number" step="0.5" min="-10" max="10" inputmode="decimal">
+<select id="tempOffset"></select>
 <p class="hint">Added to the stand's sensor reading, e.g. −3 if it reads 3° high. Shown to one decimal place. The sensor sits under the warm M5Stack, so it usually reads a little high.</p>
 </section>
 
@@ -145,6 +145,15 @@ const $=id=>document.getElementById(id);
 let cfg=null;
 const thr=['redLow','yellowLow','yellowHigh','redHigh'];
 
+// Temperature correction: a picker, because iPhone number pads have no minus key.
+function fmtOffset(v){return v===0?'0.0 °C (none)':(v>0?'+':'−')+Math.abs(v).toFixed(1)+' °C'}
+function setOffset(cur){
+  const vals=[];for(let i=-20;i<=20;i++)vals.push(i/2);
+  if(!vals.includes(cur))vals.push(cur);
+  vals.sort((a,b)=>a-b);
+  $('tempOffset').innerHTML=vals.map(v=>'<option value="'+v+'">'+fmtOffset(v)+'</option>').join('');
+  $('tempOffset').value=String(cur);
+}
 function syncTz(){const o=[...$('tzPreset').options].find(o=>o.value===$('tz').value);
   $('tzPreset').value=o?o.value:'';$('tz').style.display=o?'none':'block'}
 
@@ -154,7 +163,7 @@ async function load(){
   $('token').placeholder=cfg.tokenSet?'Token set — leave blank to keep':'No token';
   $('unit').value=cfg.showMgdl?1:0;
   thr.forEach(k=>$(k).value=cfg.showMgdl?cfg[k]:Number(cfg[k]).toFixed(1));
-  $('stale').value=cfg.staleMinutes;$('tempOffset').value=cfg.tempOffset;
+  $('stale').value=cfg.staleMinutes;setOffset(cfg.tempOffset);
   ['b1','b2','b3'].forEach((k,i)=>$(k).value=cfg.brightness[i]);
   $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
@@ -182,7 +191,7 @@ function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
 
 $('save').onclick=async()=>{
   const body={nightscout:$('nightscout').value.trim(),token:$('token').value.trim(),clearToken:$('clearToken').checked,
-    showMgdl:$('unit').value==='1',staleMinutes:+$('stale').value,tempOffset:parseFloat($('tempOffset').value)||0,
+    showMgdl:$('unit').value==='1',staleMinutes:+$('stale').value,tempOffset:parseFloat($('tempOffset').value),
     brightness:['b1','b2','b3'].map(k=>+$(k).value),nightMode:$('nightMode').checked,nightBrightness:+$('nightB').value,
     nightStart:$('nightStart').value,nightEnd:$('nightEnd').value,
     timeFormat:+$('timeFormat').value,dateFormat:+$('dateFormat').value,tz:$('tz').value.trim(),
