@@ -74,6 +74,7 @@ void fetch() {
   }
   gStatus.everFetched = true;
   gStatus.lastFetchOk = ok;
+  gStatus.fetchCount++;
   gStatus.lastFetchMillis = millis();
   gStatus.lastFetchTime = timeIsValid() ? time(nullptr) : 0;
   strlcpy(gStatus.lastResult, result, sizeof(gStatus.lastResult));

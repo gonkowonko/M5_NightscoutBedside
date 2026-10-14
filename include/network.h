@@ -16,6 +16,7 @@ struct NetStatus {
   uint32_t lastFetchMillis = 0;     // millis() of last attempt
   bool everFetched = false;
   bool lastFetchOk = false;
+  uint32_t fetchCount = 0;          // completed fetch attempts, ok or not
   char lastResult[48] = "not fetched yet";
 };
 

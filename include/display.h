@@ -21,7 +21,8 @@ struct ScreenModel {
   Trend trend = Trend::None;
   BgRange range = BgRange::InRange;
   bool stale = false;
-  char age[20] = "";    // "3 min ago" / "just now"
+  char age[20] = "";    // "3 min ago" / "just now" / "Refreshing…"
+  bool ageAlert = false;  // age line in red (stale, or a failed refresh)
 };
 
 void displayBegin();  // after M5.begin()

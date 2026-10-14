@@ -99,6 +99,8 @@ void saveLevel() {
   }
 }
 
+void startRefresh(uint32_t now);  // button C, defined below
+
 void handleButtons(uint32_t now) {
   bool a = M5.BtnA.wasPressed();
   bool b = M5.BtnB.wasPressed();
@@ -119,7 +121,7 @@ void handleButtons(uint32_t now) {
     gPage = gPage == Page::Clock ? Page::Status : gPage == Page::Status ? Page::Log : Page::Clock;
     displayInvalidate();
   }
-  if (c) networkRequestRefresh();
+  if (c) startRefresh(now);
 }
 
 void formatAge(int minutes, char* out, size_t len) {
@@ -175,7 +177,57 @@ ScreenModel buildModel() {
     int minutes = ageMs > 0 ? (int)(ageMs / 60000) : 0;
     formatAge(minutes, m.age, sizeof(m.age));
     m.stale = minutes > gCfg.staleMinutes;
+    m.ageAlert = m.stale;
   }
+  return m;
+}
+
+// ---- Manual refresh (button C) ----------------------------------------------
+// The age line shows "Refreshing…" until the network task finishes a fetch,
+// then "Refresh failed" in red for a few seconds if it didn't work.
+
+constexpr uint32_t kRefreshTimeoutMs = 15 * 1000;
+constexpr uint32_t kFailedNoteMs = 3 * 1000;
+bool gRefreshing = false;
+uint32_t gRefreshStart = 0;
+uint32_t gRefreshBaseCount = 0;
+uint32_t gFailedUntil = 0;
+
+void startRefresh(uint32_t now) {
+  NetStatus net;
+  networkStatus(net);
+  gRefreshBaseCount = net.fetchCount;
+  gRefreshStart = now;
+  gRefreshing = true;
+  gFailedUntil = 0;
+  networkRequestRefresh();
+}
+
+void applyRefreshNote(ScreenModel& m) {
+  uint32_t now = millis();
+  if (gRefreshing) {
+    NetStatus net;
+    networkStatus(net);
+    if (net.fetchCount != gRefreshBaseCount) {
+      gRefreshing = false;
+      if (!net.lastFetchOk) gFailedUntil = now + kFailedNoteMs;
+    } else if (now - gRefreshStart > kRefreshTimeoutMs) {
+      gRefreshing = false;  // e.g. no Wi-Fi, so no fetch happened
+      gFailedUntil = now + kFailedNoteMs;
+    }
+  }
+  if (gRefreshing) {
+    strlcpy(m.age, "Refreshing\xE2\x80\xA6", sizeof(m.age));
+    m.ageAlert = false;
+  } else if (gFailedUntil && (int32_t)(gFailedUntil - now) > 0) {
+    strlcpy(m.age, "Refresh failed", sizeof(m.age));
+    m.ageAlert = true;
+  }
+}
+
+ScreenModel buildScreen() {
+  ScreenModel m = buildModel();
+  applyRefreshNote(m);
   return m;
 }
 
@@ -385,7 +437,7 @@ void setup() {
   displayBegin();
   if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");
   networkBegin(gCfg);
-  webBegin(gCfg, kIniPath, {applySettings, buildModel});
+  webBegin(gCfg, kIniPath, {applySettings, buildScreen});
   sensorBegin();
   sensorUpdate(millis());
   applyBrightness(millis());
@@ -405,7 +457,7 @@ void loop() {
   if (now - lastFrame >= kFrameMs) {
     lastFrame = now;
     switch (gPage) {
-      case Page::Clock: displayUpdate(buildModel()); break;
+      case Page::Clock: displayUpdate(buildScreen()); break;
       case Page::Status: showStatusPage(now); break;
       case Page::Log: showLogPage(now); break;
     }

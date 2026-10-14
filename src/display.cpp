@@ -196,6 +196,7 @@ void drawStrip(const ScreenModel& m) {
     int cy = oy + kBgCenterY;
     if (!m.hasBg) {
       drawText(s, gBgFace, "---", 0, cy, Align::Left, kGrey);
+      drawText(s, gSmallFace, m.age, kContentW, oy + kAgeCenterY, Align::Right, m.ageAlert ? kRed : kDim);
       return;
     }
     uint32_t color = m.stale ? kGrey : rangeColor(m.range);
@@ -213,13 +214,14 @@ void drawStrip(const ScreenModel& m) {
       drawText(s, gDeltaFace, delta, kContentW, oy + kDeltaCenterY, Align::Right, color);
     }
     drawText(s, gSmallFace, m.age, kContentW, oy + kAgeCenterY, Align::Right,
-             m.stale ? kRed : kDim);
+             m.ageAlert ? kRed : kDim);
   });
 }
 
 bool stripChanged(const ScreenModel& a, const ScreenModel& b) {
   return a.hasBg != b.hasBg || strcmp(a.bg, b.bg) || strcmp(a.delta, b.delta) ||
-         a.trend != b.trend || a.range != b.range || a.stale != b.stale || strcmp(a.age, b.age);
+         a.trend != b.trend || a.range != b.range || a.stale != b.stale || strcmp(a.age, b.age) ||
+         a.ageAlert != b.ageAlert;
 }
 
 // ---- Debug page -------------------------------------------------------------
