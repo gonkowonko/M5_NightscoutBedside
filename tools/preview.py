@@ -128,6 +128,10 @@ def main():
     out = os.path.join(ROOT, "docs", "preview.png")
     sheet.save(out)
     print(out)
+    # Single screen at 2x (nearest-neighbour keeps the real pixels crisp).
+    hero = os.path.join(ROOT, "docs", "clock.png")
+    shots[0].resize((W * 2, H * 2), Image.NEAREST).save(hero)
+    print(hero)
 
 
 if __name__ == "__main__":

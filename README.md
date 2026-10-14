@@ -1,236 +1,311 @@
-# M5 Bedside Clock
+# M5_NightscoutBedside
 
-A calm, readable bedside clock for the original **M5Stack Basic Core** (K001) that also shows
-your latest glucose reading from [Nightscout](https://nightscout.github.io/), plus the room
-temperature from the DHT12 sensor in the **BTC Standing Base**.
+A calm, readable **bedside clock** for the original **M5Stack Basic Core** that also shows your
+latest glucose reading from [Nightscout](https://nightscout.github.io/), with the room temperature
+from the sensor in the M5Stack **BTC Standing Base**.
 
-![Preview of the four main states](docs/preview.png)
+<p align="center"><img src="docs/clock.png" width="480" alt="The clock screen: date and temperature at the top, a large 23:47, and 5.8 mmol/L with a flat arrow, +0.2 and 2 min ago at the bottom"></p>
 
-*In range · amber with rising arrow · urgent low falling fast · stale data (struck through, age in red).
-Rendered by `tools/preview.py` from the same fonts and layout constants as the firmware.*
+The time is the biggest thing on the screen, readable from across the room. The glucose reading sits below it,
+coloured by your own ranges, and greys out with a strike-through if the data stops coming in. There's no flicker
+or busy dashboard. A settings page on your phone and updates over Wi-Fi mean you never have to take the SD
+card out or plug in a cable again.
 
-It's a clean rewrite inspired by
-[mlukasek/M5_NightscoutMon](https://github.com/mlukasek/M5_NightscoutMon) and reads the same
-`M5NS.INI`, so one SD card works with either firmware.
+> [!WARNING]
+> This is a hobby project and **not a medical device**. Readings can be delayed, missing or wrong. Never use it
+> to make treatment decisions, and don't rely on it in place of your CGM app's alerts. It has no sound alarms.
 
-## What it shows
+It's a clean rewrite inspired by [mlukasek/M5_NightscoutMon](https://github.com/mlukasek/M5_NightscoutMon) and
+reads the same `M5NS.INI` file, so one SD card works with either firmware.
 
-| Area | Content |
+## Screenshots
+
+**The clock in four states:**
+
+![Four states of the clock screen](docs/preview.png)
+
+*In range, flat · above range (amber), rising · urgent low (red), falling fast · stale data: greyed out and
+struck through, with the age in red.*
+
+**Settings page** (on your phone, at `http://m5clock.local`):
+
+<p align="center"><img src="docs/settings.png" width="360" alt="Settings page with Nightscout, glucose range and brightness sections"></p>
+
+*These are rendered from the firmware's real fonts, layout and settings page (see [Development](#development)),
+using made-up example data.*
+
+## Features
+
+- **Big, clear clock** in Barlow Condensed, with the date and room temperature above it.
+- **Nightscout glucose** with trend arrow, change since the last reading, and how old it is. Fetched every 60 s.
+- **Your colours:** green in range, amber and red at the thresholds you choose, in mmol/L or mg/dL.
+- **Stale warning:** if no new reading arrives for 10 minutes (adjustable), the value greys out and is struck through.
+- **Settings page** in your browser: Nightscout, ranges, brightness, night dimming, time zone, Wi-Fi.
+- **Updates over Wi-Fi** from PlatformIO or by uploading a file on the settings page.
+- **Optional night dimming** between set hours. Any button brings the brightness back for 30 s.
+- **Automatic summer time** (BST/GMT by default) via NTP.
+- **Status and log pages** on the device, showing what went wrong overnight (Wi-Fi drops, Nightscout errors, stale data).
+- Keeps working through network blips: it shows the last good reading and never reboot-loops.
+
+## What you need
+
+| Part | Notes |
 | --- | --- |
-| Top line | Date (`Wed 14 Oct`) on the left, room temperature (`19°C`) on the right; blank if no sensor |
-| Middle | The time, `HH:MM`, as large as fits. `--:--` until NTP has synced |
-| Bottom strip | Glucose value, trend arrow, delta (`+0.2`), and `just now` / `N min ago` |
+| **M5Stack Basic Core** (K001, ESP32, 320×240 screen) | The original Basic/Gray. Other M5Stacks are untested. |
+| **M5Stack BTC Standing Base** | Optional. Provides the DHT12 temperature sensor. Without it the temperature is just blank. |
+| **microSD card** | Any size, formatted FAT32. Holds the settings and fonts. |
+| **USB-A to USB-C cable** | Needed once, for the first flash. **A USB-C to USB-C cable won't work** with the original Basic: its port lacks the resistors that USB-C chargers and computers look for. On a USB-C-only Mac, use a USB-A adapter or hub. |
+| A **Nightscout** site | Its address and, if it's locked down, an access token with the `readable` role. |
+| A computer with **[PlatformIO](https://platformio.org/)** | `brew install platformio` on macOS, or the VS Code extension. |
 
-Colours follow your INI thresholds: green in range, amber outside `yellow_low`/`yellow_high`,
-red outside `red_low`/`red_high`. When the newest reading is older than `stale_minutes`
-the value, arrow and delta turn grey, the value is struck through and the age turns red.
-Before the first reading it shows `---`.
+## Setup
 
-The screen only redraws regions that change (clock and age once a minute, the strip on new
-data). Each region is drawn off-screen in a small sprite band and pushed in one go, so there is no flicker.
+### 1. Get the code
 
-## Buttons
+```bash
+git clone https://github.com/gonkowonko/M5_NightscoutBedside.git
+cd M5_NightscoutBedside
+```
+
+### 2. Prepare the SD card
+
+Copy the **contents** of the [`SD/`](SD) folder to the root of the card, so it looks like this:
+
+```
+M5NS.INI
+fonts/clock.vlw  fonts/bg.vlw  fonts/delta.vlw  fonts/text14.vlw  fonts/text15.vlw  fonts/OFL.txt
+```
+
+Open `M5NS.INI` in a text editor and fill in at least:
+
+```ini
+[config]
+; your Nightscout address
+nightscout = yoursite.example.com
+; your access token (leave empty if your site is public)
+token = yourtoken-0123456789abcdef
+; 0 = mmol/L, 1 = mg/dL
+show_mgdl = 0
+
+[wlan1]
+ssid = YourWiFi
+pass = YourWiFiPassword
+```
+
+Comments (`;` or `#`) must be on their own line. Anything after a value counts as part of the value.
+
+The other settings have sensible defaults, and you can change them all later from the settings page.
+
+> If you already run M5_NightscoutMon, keep your existing `M5NS.INI`. Just add the `fonts` folder,
+> and optionally a `tz = …` line (see [Configuration](#configuration)).
+
+Put the card in the M5Stack.
+
+### 3. Back up the current firmware (optional, recommended)
+
+If the M5Stack already runs something you might want back, save a full copy first. Plug it in with the
+USB-A to USB-C cable, then:
+
+```bash
+pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 flash_id
+```
+
+Note the `Detected flash size` (usually 4MB), then copy the whole chip (`0x400000` for 4 MB, `0x1000000` for 16 MB):
+
+```bash
+pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 read_flash 0 0x400000 firmware-backup.bin
+```
+
+This file contains your Wi-Fi password and Nightscout token, so keep it private. Git ignores `*-backup.bin`.
+
+### 4. Flash it
+
+With the M5Stack plugged in over USB:
+
+```bash
+pio run -t upload
+```
+
+This builds the firmware and flashes it, and takes about two minutes. If the port isn't found automatically, run
+`ls /dev/cu.*` and add `--upload-port /dev/cu.usbserial-XXXX`. Flashing runs at 115200 baud on purpose,
+because faster speeds were unreliable through USB adapters.
+
+### 5. First boot
+
+The clock connects to Wi-Fi, sets the time from the internet, and shows your first reading, all within about
+20 seconds. Then:
+
+- Open **http://m5clock.local** on a phone or computer on the same Wi-Fi to reach the settings page. If the
+  name doesn't work, press **B** on the clock: the status page shows its IP address.
+- Unplug the USB cable. From now on, updates can go over Wi-Fi.
+
+If something's not right, press **B** for the status page and **B** again for the log. Both are described below.
+
+## Using it
 
 | Button | Action |
 | --- | --- |
-| A (left) | Cycle brightness `brightness1` → `brightness2` → `brightness3` |
-| B (middle) | Cycle pages: clock → status → log → clock |
-| C (right) | Fetch from Nightscout now |
+| **A** (left) | Cycle the three brightness levels. The one you pick is remembered across restarts. |
+| **B** (middle) | Cycle pages: clock → status → log → clock |
+| **C** (right) | Fetch from Nightscout now |
 
-The level you pick with A is remembered across restarts.
+**Night dimming** is off by default. Turn it on with the *Dim at night* switch on the settings page and the screen
+dims between the hours you set. A press of any button brings normal brightness back for 30 s. While the screen
+is dimmed, that first press only wakes it, so fumbling in the dark doesn't change anything.
 
-Night dimming is opt-in (`night_mode = 1`, or the switch on the settings page). When it's on, the screen dims
-to `night_brightness` between `night_start` and `night_end`. A press of any button brings normal brightness
-back for 30 seconds. While the screen is dimmed, that first press only wakes it, so fumbling in the dark
-doesn't change settings. When it's off, the brightness you picked stays put day and night.
+**Status page:** Wi-Fi network and signal, IP address, Nightscout site, last fetch time and result, latest
+reading, time zone, brightness, sensor, fonts loaded, free memory and uptime.
 
-## Settings page
-
-Open **http://m5clock.local** on a phone or computer on the same Wi-Fi. If that name doesn't
-resolve, use the IP address on the clock's status page (button B). There's no password: anyone on
-your network can open it, the same as the original firmware's web page.
-
-You can change all of these there: Nightscout site and token, units and
-range thresholds, stale time, the three brightness levels, night dimming on/off and its times, 12/24 h and date
-format, time zone, and the Wi-Fi network. Passwords and the token are never sent to the page;
-leave a field blank to keep the current value.
-
-Saving writes `M5NS.INI` on the SD card. Only the keys this firmware manages are edited in place,
-so the original firmware's settings and your comments are left as they are. The previous file is
-kept as `M5NS.PRV`. Display settings apply immediately. Changing the Nightscout site, token or
-Wi-Fi restarts the clock.
-
-## Status and log pages
-
-**Status** shows the current state: Wi-Fi network and signal, IP, Nightscout URL, last fetch
-time and result, latest reading, time sync and TZ, brightness, sensor, fonts loaded, memory
-and uptime.
-
-**Log** lists the last 13 notable events, newest first, so you can see *why* the clock was
-stale overnight. Repeats are collapsed, e.g. `02:10-02:24 NS HTTP 502 x14`.
+**Log page:** the last 13 notable events, newest first, so you can see what happened overnight.
+Repeats are collapsed (`02:10-02:24 NS HTTP 502 x14`).
 
 | Event | Example |
 | --- | --- |
-| Boot, with the reason for the restart | `Boot v1.0.0: brownout (power dip)` |
-| Wi-Fi connected / lost / not found | `Wi-Fi: HomeNet -61 dBm`, `Wi-Fi lost` |
-| Nightscout failures and recovery | `NS HTTP 502`, `NS OK again after 3 failures` |
-| Data going stale and why | `Stale: Nightscout has no new data`, `Stale: fetches failing` |
-| NTP sync, sensor found/lost, missing fonts | `Time synced (NTP)`, `Sensor: DHT12 lost` |
+| Boot, and why it restarted | `Boot v1.1.0: brownout (power dip)` |
+| Wi-Fi connected / lost | `Wi-Fi: MyHomeWiFi -61 dBm`, `Wi-Fi lost` |
+| Nightscout problems and recovery | `NS HTTP 502`, `NS OK again after 3 failures` |
+| Data going stale, and why | `Stale: Nightscout has no new data`, `Stale: fetches failing` |
+| Time sync, sensor, fonts, I2C devices | `Time synced (NTP)`, `Sensor: DHT12 found`, `I2C: 5C 75` |
 
-Times are local (`02:10`, or `Tue 02:10` if not today); events before NTP sync show seconds
-since boot until the clock is set. The log lives in RAM and starts fresh after a restart,
-but the boot entry records why it restarted. Everything is also printed to the serial port.
+The log is kept in memory, so it starts fresh after a restart, but the first entry records why the clock restarted.
 
-## Build and flash
+## Settings page
 
-Requires [PlatformIO](https://platformio.org/) (`brew install platformio` on macOS).
+Everything is editable at **http://m5clock.local**: Nightscout site and token, units, range thresholds, stale
+time, brightness levels, night dimming, 12/24-hour time, date format, time zone and Wi-Fi.
+
+- Display changes apply instantly. Changing Nightscout or Wi-Fi saves and restarts the clock.
+- The token and Wi-Fi password are never sent to the browser. Leave those fields blank to keep them.
+- Saving writes `M5NS.INI` on the SD card, editing only the keys this firmware manages. Settings used by the original
+  firmware, and your comments, are left alone. The previous file is kept as `M5NS.PRV`.
+- There's **no password**. Anyone on your Wi-Fi can open it, the same as the original firmware's page.
+
+## Updating over Wi-Fi
+
+After the first USB flash, no cable is needed:
 
 ```bash
-pio run                 # build
-pio run -e ota -t upload  # build and install over Wi-Fi (m5clock.local)
-pio run -t upload       # build and flash over USB
-pio device monitor      # serial log over USB, 115200 baud
+pio run -e ota -t upload       # build and send to m5clock.local
 ```
 
-### Updating over Wi-Fi
+You can also upload `.pio/build/m5stack-basic/firmware.bin` in the **Firmware** section of the settings page.
 
-Once this firmware is on the clock, updates don't need a cable:
+Either way the clock shows a progress bar, checks the new firmware, and only then restarts into it. A failed upload or
+a wrong file leaves the current firmware running. The flash is split into two 1.9 MB app slots for this, so
+coming from another firmware, the first flash has to be over USB.
 
-- **From PlatformIO:** `pio run -e ota -t upload` sends the build to `m5clock.local` over Wi-Fi.
-- **From the settings page:** in the Firmware section, pick `.pio/build/m5stack-basic/firmware.bin` and
-  press *Upload and install*.
+## Configuration
 
-Either way the clock shows a progress bar, checks the new image, and only then restarts into it. If the
-upload fails or the file isn't valid firmware, the current firmware keeps running. There is no password,
-the same as the settings page.
+All settings live in `M5NS.INI` on the SD card ([example](SD/M5NS.INI)) and can be edited on the settings page.
+Read from the original M5_NightscoutMon format:
 
-The flash is split into two 1.9 MB app slots (`min_spiffs.csv`) so one can be written while the other runs.
-Coming from the original firmware, or from builds before 1.1.0, the first flash has to be over USB so the new
-layout is written.
+| Key | Meaning |
+| --- | --- |
+| `nightscout`, `token` | Nightscout address (host or full URL; `https://` assumed) and access token |
+| `show_mgdl` | `0` = mmol/L (one decimal), `1` = mg/dL. Thresholds are in the same unit. |
+| `red_low`, `yellow_low`, `yellow_high`, `red_high` | Range colours: red outside `red_*`, amber outside `yellow_*`, green between |
+| `brightness1/2/3` | The three brightness levels for button A, in % |
+| `time_format` | `0` = 24 h, `1` = 12 h (no AM/PM) |
+| `date_format` | `0` = `Wed 14 Oct`, `1` = `Wed Oct 14` |
+| `time_zone`, `dst` | Fixed offsets in seconds, used only if `tz` isn't set |
+| `[wlan1]` … `[wlan9]` `ssid`, `pass` | Wi-Fi networks (the settings page manages one) |
 
-PlatformIO normally finds the serial port on its own. If it doesn't, add `--upload-port /dev/cu.usbserial-XXXX`.
-Flashing runs at 115200 baud, because faster speeds were unreliable through a USB-C-to-A adapter.
-
-**USB cable:** the original Basic's USB-C port only works with a **USB-A to USB-C** cable. A USB-C to USB-C
-cable doesn't power it up or connect, so on a Mac with only USB-C ports use a USB-A adapter or hub.
-
-## SD card
-
-Copy the contents of the [`SD/`](SD) folder to the root of the microSD card (FAT32):
-
-```
-/M5NS.INI          your configuration (edit the example)
-/fonts/clock.vlw   Barlow Condensed SemiBold, clock digits
-/fonts/bg.vlw      Barlow Condensed SemiBold 58px, glucose value
-/fonts/delta.vlw   Barlow Condensed SemiBold 28px, delta
-/fonts/text15.vlw  Barlow Medium 15px, date and temperature
-/fonts/text14.vlw  Barlow Medium 14px, "N min ago"
-```
-
-If you already have a card from M5_NightscoutMon, just add the `fonts` folder (and optionally
-the new keys below) to it. If the fonts are missing, the clock falls back to M5GFX's built-in
-fonts. It still works, but it's less pretty.
-
-### Configuration (`M5NS.INI`)
-
-Keys read from the original format: `nightscout`, `token`, `time_zone`, `dst`, `show_mgdl`,
-`time_format`, `date_format`, `brightness1/2/3`, `yellow_low`, `yellow_high`, `red_low`,
-`red_high`, and `ssid`/`pass` in `[wlan1]`…`[wlan9]`. Everything else is ignored.
-
-New optional keys:
+New in this firmware (ignored by the original):
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `tz` | `GMT0BST,M3.5.0/1,M10.5.0` | POSIX time zone string; handles BST/GMT automatically. If set, `time_zone`/`dst` are ignored. If neither `tz` nor `time_zone`/`dst` is present, the UK default applies. |
+| `tz` | `GMT0BST,M3.5.0/1,M10.5.0` | [POSIX time zone](https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html), so summer time switches automatically. Presets on the settings page. |
 | `stale_minutes` | `10` | Readings older than this are shown as stale |
-| `night_mode` | `0` | `1` turns on night dimming; `0` keeps the chosen brightness day and night |
-| `night_start` | `22:00` | Start of night dimming (local time) |
-| `night_end` | `07:00` | End of night dimming |
-| `night_brightness` | `5` | Brightness in percent during the night (0 turns the backlight off) |
+| `night_mode` | `0` | `1` turns night dimming on |
+| `night_start`, `night_end` | `22:00`, `07:00` | Night dimming hours (local time) |
+| `night_brightness` | `5` | Brightness during the night, in % (`0` = backlight off) |
 
-Notes:
-
-- `show_mgdl = 0` shows mmol/L (one decimal); `1` shows mg/dL. Thresholds are in the unit you display.
-- `nightscout` may be a bare host (`cgm.example.com`) or a full URL; `https://` is assumed.
-  The token is appended as `&token=…` and is never shown on screen or in the serial log.
-- `time_format = 1` gives a 12-hour clock without AM/PM; `date_format = 1` gives `Wed Oct 14`.
-- Data comes from `GET /api/v1/entries/sgv.json?count=2` every 60 s. The delta is the newest
-  minus the previous entry, as displayed.
-
-### Regenerating the fonts
-
-The `.vlw` files are generated from the Barlow fonts (SIL Open Font License, see
-[`tools/ttf/OFL.txt`](tools/ttf/OFL.txt)):
-
-```bash
-python3 -m venv tools/.venv
-tools/.venv/bin/pip install pillow
-tools/.venv/bin/python tools/make_fonts.py   # writes SD/fonts/*.vlw
-tools/.venv/bin/python tools/preview.py      # optional: writes docs/preview.png
-```
-
-`make_fonts.py` picks the largest clock size where `HH:MM` still fits the 292px content width.
-That's 140px with digits about 100px tall: Barlow Condensed's digits are too wide for 124px-tall digits to fit the width.
-Change the sizes or character sets in the `FONTS` table at the top of the script.
+Unknown keys are ignored, so the original firmware's sound, LED and page settings can stay in the file.
 
 ## Going back to M5_NightscoutMon
 
-The cleanest way back is a full backup taken **before** the first flash of this firmware:
+If you took a backup in step 3, plug in over USB and run:
 
 ```bash
-pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 read_flash 0 0x400000 nightscoutmon-backup.bin
+pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 write_flash 0 firmware-backup.bin
 ```
 
-Restore it with:
+Without a backup, flash the original release: M5Burner on Windows, or the
+[`Binaries/BASIC_Gray_Fire`](https://github.com/mlukasek/M5_NightscoutMon/tree/master/Binaries/BASIC_Gray_Fire)
+files on any OS. From inside that folder:
 
 ```bash
-pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 write_flash 0 nightscoutmon-backup.bin
+pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 write_flash 0x1000 bootloader_0x1000.bin 0x8000 M5_NightscoutMon.ino.partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 M5_NightscoutMon.ino.bin
 ```
 
-Without a backup, flash the original release:
+The SD card doesn't need changing.
 
-- **Windows:** use the M5Burner bundle from the
-  [M5_NightscoutMon releases](https://github.com/mlukasek/M5_NightscoutMon/releases).
-- **Any OS:** use the binaries in the repo's
-  [`Binaries/BASIC_Gray_Fire`](https://github.com/mlukasek/M5_NightscoutMon/tree/master/Binaries/BASIC_Gray_Fire)
-  folder. From inside that folder:
+## Troubleshooting
 
-  ```bash
-  pio pkg exec --package platformio/tool-esptoolpy -- esptool.py --chip esp32 write_flash 0x1000 bootloader_0x1000.bin 0x8000 M5_NightscoutMon.ino.partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 M5_NightscoutMon.ino.bin
-  ```
+| Problem | Fix |
+| --- | --- |
+| Mac doesn't see the M5Stack (`ls /dev/cu.*` shows nothing new) | Use a USB-A to USB-C data cable (see [What you need](#what-you-need)). |
+| `Invalid head of packet` / flashing fails part-way | Use the default 115200 baud; avoid long cables and hubs. |
+| `No SD card` or `M5NS.INI not found` on screen | Card must be FAT32 with `M5NS.INI` in the root. |
+| Clock shows `--:--` | No internet yet: check Wi-Fi on the status page. |
+| `---` instead of a reading | Check *Result* on the status page: `HTTP 401` means a wrong or missing token. |
+| No temperature | The DHT12 is in the stand. The log's `I2C:` line should list `5C`. |
+| Blocky digits | The `fonts` folder is missing from the SD card (status page: *Fonts 0/5*). |
+| `m5clock.local` is slow or doesn't open | Use the IP address from the status page. Some apps wait ~5 s for an IPv6 answer first. |
 
-The SD card doesn't need changes. The original firmware ignores the new keys and the `fonts` folder.
-
-## Code layout
+## Development
 
 ```
 src/main.cpp         glue: setup, buttons, brightness, builds the ScreenModel
-src/config.cpp       M5NS.INI parsing                      (include/config.h)
-src/network.cpp      background task: Wi-Fi, NTP, 60 s fetch (include/network.h)
-src/nightscout.cpp   HTTPS request + JSON parsing           (include/nightscout.h)
-src/sensor.cpp       DHT12 over I2C                         (include/sensor.h)
-src/display.cpp      layout A rendering, status/log pages   (include/display.h)
-src/ota.cpp          firmware updates over Wi-Fi            (include/ota.h)
-src/eventlog.cpp     in-memory event log                    (include/eventlog.h)
-src/webconfig.cpp    settings web page + JSON API           (include/webconfig.h, webpage.h)
-include/initext.h    INI line editor used when saving       (host test: test/host)
-src/timekeeping.cpp  TZ/NTP and clock/date formatting       (include/timekeeping.h)
+src/config.cpp       M5NS.INI reading and writing               (include/config.h, initext.h)
+src/network.cpp      background task: Wi-Fi, NTP, mDNS, 60 s fetch (include/network.h)
+src/nightscout.cpp   HTTPS request + JSON parsing                (include/nightscout.h)
+src/display.cpp      flicker-free clock, status/log/progress screens (include/display.h)
+src/webconfig.cpp    settings page + JSON API                    (include/webconfig.h, webpage.h)
+src/ota.cpp          firmware updates over Wi-Fi                 (include/ota.h)
+src/eventlog.cpp     in-memory event log                         (include/eventlog.h)
+src/sensor.cpp       DHT12 over I2C                              (include/sensor.h)
+src/timekeeping.cpp  TZ/NTP and clock/date formatting            (include/timekeeping.h)
 include/glucose.h    units, range classification, trend parsing
-tools/               font generator and preview renderer
+tools/               font generator, screen preview, settings screenshot
+test/host/           host-side test of the INI editor
 ```
 
-Network I/O runs in its own FreeRTOS task, so the clock and buttons stay responsive while
-an HTTPS request is in flight. Any failed fetch keeps the last good reading, and its growing age
-eventually shows it as stale. Sound alarms aren't implemented yet. They would hook in where
-`main.cpp` builds the screen model, using `classify()` from `glucose.h`.
+Some design notes:
+
+- **No PSRAM on the Basic**, so there's no full-screen buffer. Each screen region is drawn into one reused
+  292×32 sprite band and pushed in one go, which avoids flicker. Only regions that changed are redrawn.
+- **Fonts** are anti-aliased `.vlw` files streamed from the SD card a glyph at a time. The clock digits alone
+  would be ~60 KB in RAM. Missing fonts fall back to M5GFX's built-in ones.
+- **Network** (Wi-Fi, NTP, HTTPS) runs in its own FreeRTOS task, so the clock and buttons never wait on it.
+  Wi-Fi power saving is off, because the clock is always on USB power.
+- Sound alarms aren't implemented. They would hook in where `main.cpp` builds the screen model, using
+  `classify()` from `glucose.h`.
+
+Regenerating assets (fonts, screen previews and the settings-page screenshot):
+
+```bash
+python3 -m venv tools/.venv && tools/.venv/bin/pip install pillow
+tools/.venv/bin/python tools/make_fonts.py     # SD/fonts/*.vlw from the Barlow TTFs
+tools/.venv/bin/python tools/preview.py        # docs/preview.png, docs/clock.png
+python3 tools/settings_screenshot.py           # docs/settings.png (needs Google Chrome)
+```
+
+`make_fonts.py` picks the largest clock size where `HH:MM` still fits the 292 px width. That's 140 px, with digits
+about 100 px tall.
+
+Host test for the INI editor (keeps every unmanaged line, line endings and comments intact):
+
+```bash
+clang++ -std=c++17 -I test/host -I include test/host/test_initext.cpp -o /tmp/initext && /tmp/initext SD/M5NS.INI
+```
 
 ## Credits and licence
 
-- Based on ideas, the INI format and code from
-  [M5_NightscoutMon](https://github.com/mlukasek/M5_NightscoutMon) by Martin Lukasek (GPL-3.0),
-  including its `IniFile` (originally by Steve Marple) and DHT12 reading code (by Bobadas).
+- Based on ideas, the INI format and code from [M5_NightscoutMon](https://github.com/mlukasek/M5_NightscoutMon)
+  by Martin Lukasek (GPL-3.0), including its `IniFile` (originally by Steve Marple) and DHT12 reading code (by Bobadas).
 - [Barlow](https://github.com/jpt/barlow) typeface by Jeremy Tribby, SIL Open Font License 1.1.
-- Built on [M5Unified](https://github.com/m5stack/M5Unified), [M5GFX](https://github.com/m5stack/M5GFX)
-  and [ArduinoJson](https://arduinojson.org/).
+- Built on [M5Unified](https://github.com/m5stack/M5Unified), [M5GFX](https://github.com/m5stack/M5GFX) and
+  [ArduinoJson](https://arduinojson.org/).
 
-This project is licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
+Licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
