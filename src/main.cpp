@@ -96,7 +96,12 @@ void handleButtons(uint32_t now) {
   if (c) networkRequestRefresh();
 }
 
-void formatAge(int minutes, char* out, size_t len) { snprintf(out, len, "%d min ago", minutes); }
+void formatAge(int minutes, char* out, size_t len) {
+  if (minutes < 1)
+    strlcpy(out, "just now", len);
+  else
+    snprintf(out, len, "%d min ago", minutes);
+}
 
 ScreenModel buildModel() {
   ScreenModel m;

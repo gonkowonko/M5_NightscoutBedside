@@ -19,7 +19,7 @@ It's a clean rewrite inspired by
 | --- | --- |
 | Top line | Date (`Wed 14 Oct`) on the left, room temperature (`19°C`) on the right; blank if no sensor |
 | Middle | The time, `HH:MM`, as large as fits. `--:--` until NTP has synced |
-| Bottom strip | Glucose value, trend arrow, delta (`+0.2`), and `N min ago` |
+| Bottom strip | Glucose value, trend arrow, delta (`+0.2`), and `just now` / `N min ago` |
 
 Colours follow your INI thresholds: green in range, amber outside `yellow_low`/`yellow_high`,
 red outside `red_low`/`red_high`. When the newest reading is older than `stale_minutes`

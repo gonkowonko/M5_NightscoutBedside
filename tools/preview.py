@@ -28,7 +28,7 @@ CLOCK_H = DIVIDER_Y - 1 - CLOCK_Y
 BG_CY, DELTA_CY, AGE_CY = STRIP_H // 2, 22, 45
 ARROW_GAP, ARROW_BOX, DOUBLE_GAP = 12, 34, 20
 
-CLOCK, DIM, DIVIDER, GREY = "#F3F4F6", "#9CA3AF", "#1F2937", "#6B7280"
+CLOCK, DIM, DIVIDER, GREY = "#F3F4F6", "#9CA3AF", "#262626", "#6B7280"
 RED, AMBER, GREEN = "#F87171", "#FBBF24", "#4ADE80"
 
 
@@ -116,7 +116,7 @@ def main():
     f = {n: Vlw(os.path.join(FONTS, n + ".vlw")) for n in ("clock", "bg", "delta", "text15", "text14")}
     shots = [
         screen(f, "Wed 14 Oct", "19°C", "23:47", "5.8", "+0.2", "Flat", GREEN, age="2 min ago"),
-        screen(f, "Wed 14 Oct", "19°C", "03:12", "10.4", "+0.6", "FortyFiveUp", AMBER, age="1 min ago"),
+        screen(f, "Wed 14 Oct", "19°C", "03:12", "10.4", "+0.6", "FortyFiveUp", AMBER, age="just now"),
         screen(f, "Thu 15 Oct", "18°C", "06:58", "3.6", "-0.3", "DoubleDown", RED, age="4 min ago"),
         screen(f, "Thu 15 Oct", "", "07:30", "6.1", "0.0", "SingleDown", GREEN, stale=True, age="23 min ago"),
     ]
