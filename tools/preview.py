@@ -115,9 +115,9 @@ def screen(f, date, temp, time, bg=None, delta="", trend=None, color=GREEN, stal
 def main():
     f = {n: Vlw(os.path.join(FONTS, n + ".vlw")) for n in ("clock", "bg", "delta", "text15", "text14")}
     shots = [
-        screen(f, "Wed 14 Oct", "19°C", "23:47", "5.8", "+0.2", "Flat", GREEN, age="2 min ago"),
-        screen(f, "Wed 14 Oct", "19°C", "03:12", "10.4", "+0.6", "FortyFiveUp", AMBER, age="just now"),
-        screen(f, "Thu 15 Oct", "18°C", "06:58", "3.6", "-0.3", "DoubleDown", RED, age="4 min ago"),
+        screen(f, "Wed 14 Oct", "19.5°C", "23:47", "5.8", "+0.2", "Flat", GREEN, age="2 min ago"),
+        screen(f, "Wed 14 Oct", "19.5°C", "03:12", "10.4", "+0.6", "FortyFiveUp", AMBER, age="just now"),
+        screen(f, "Thu 15 Oct", "18.2°C", "06:58", "3.6", "-0.3", "DoubleDown", RED, age="4 min ago"),
         screen(f, "Thu 15 Oct", "", "07:30", "6.1", "0.0", "SingleDown", GREEN, stale=True, age="23 min ago"),
     ]
     gap = 12

@@ -117,7 +117,7 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 <input id="tz" style="margin-top:8px" spellcheck="false" autocapitalize="off" placeholder="POSIX TZ string">
 <label for="tempOffset">Temperature correction (°C)</label>
 <input id="tempOffset" type="number" step="0.5" min="-10" max="10" inputmode="decimal">
-<p class="hint">Added to the stand's sensor reading, e.g. −3 if it reads 3° high. The sensor sits under the warm M5Stack, so it usually reads a little high.</p>
+<p class="hint">Added to the stand's sensor reading, e.g. −3 if it reads 3° high. Shown to one decimal place. The sensor sits under the warm M5Stack, so it usually reads a little high.</p>
 </section>
 
 <section><h2>Wi-Fi</h2>

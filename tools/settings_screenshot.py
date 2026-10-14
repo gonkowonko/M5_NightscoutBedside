@@ -25,7 +25,7 @@ CONFIG = {
     "tz": "GMT0BST,M3.5.0/1,M10.5.0", "version": "1.1.0", "build": "Oct 14 2026 14:34:15",
     "wifi": [{"ssid": "MyHomeWiFi", "orig": 0, "hasPass": True}],
 }
-STATUS = {"time": "23:47", "date": "Wed 14 Oct", "temp": "19°C", "hasBg": True, "bg": "5.8",
+STATUS = {"time": "23:47", "date": "Wed 14 Oct", "temp": "19.5°C", "hasBg": True, "bg": "5.8",
           "delta": "+0.2", "age": "2 min ago", "stale": False, "range": "InRange"}
 
 

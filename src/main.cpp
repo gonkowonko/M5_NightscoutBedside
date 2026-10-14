@@ -144,7 +144,7 @@ ScreenModel buildModel() {
   }
 
   if (sensorFound())
-    snprintf(m.temp, sizeof(m.temp), "%ld\xC2\xB0" "C", lroundf(sensorTemperature() + gCfg.tempOffset));
+    snprintf(m.temp, sizeof(m.temp), "%.1f\xC2\xB0" "C", sensorTemperature() + gCfg.tempOffset);
 
   NsReading r;
   networkLatest(r);

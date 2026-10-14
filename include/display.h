@@ -12,7 +12,7 @@
 // Everything the main screen shows. Strings are UTF-8.
 struct ScreenModel {
   char date[16] = "";   // "Wed 14 Oct", empty until time is known
-  char temp[12] = "";   // "19°C", empty without sensor
+  char temp[12] = "";   // "19.5°C", empty without sensor
   char time[8] = "";    // "07:42" or "--:--"
 
   bool hasBg = false;   // false -> "---" in grey
