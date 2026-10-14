@@ -41,6 +41,16 @@ bool readDht12() {
 
 }  // namespace
 
+void sensorBegin() {
+  // Diagnostic: list every device on the bus (IP5306 power chip is 0x75).
+  char found[40] = "";
+  size_t len = 0;
+  for (uint8_t a = 0x08; a < 0x78; a++)
+    if (M5.In_I2C.scanID(a, kFreq) && len + 6 < sizeof(found))
+      len += snprintf(found + len, sizeof(found) - len, " %02X", a);
+  logEvent("I2C:%s", len ? found : " no devices");
+}
+
 void sensorUpdate(uint32_t nowMs) {
   if (gReadOnce && nowMs - gLastRead < kIntervalMs) return;
   gReadOnce = true;

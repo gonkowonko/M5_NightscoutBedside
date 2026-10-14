@@ -326,6 +326,7 @@ void setup() {
   if (displayFontsLoaded() < 5) logEvent("Fonts: only %d/5 found in /fonts", displayFontsLoaded());
   if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");
   networkBegin(gCfg);
+  sensorBegin();
   sensorUpdate(millis());
   applyBrightness(millis());
 }

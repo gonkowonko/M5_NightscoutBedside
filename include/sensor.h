@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+void sensorBegin();                 // logs which I2C devices are present
 void sensorUpdate(uint32_t nowMs);  // call often; reads every 30 s
 bool sensorFound();                 // last read succeeded
 float sensorTemperature();          // degrees C, valid if sensorFound()
