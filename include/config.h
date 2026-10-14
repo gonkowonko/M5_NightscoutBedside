@@ -26,6 +26,7 @@ struct AppConfig {
 
   // New keys (this firmware only).
   int staleMinutes = 10;
+  bool nightEnabled = false;  // opt-in: dim between nightStart and nightEnd
   int nightStart = 22 * 60;  // minutes after midnight
   int nightEnd = 7 * 60;
   int nightBrightness = 5;   // percent

@@ -75,6 +75,7 @@ void handleGetConfig() {
   doc["staleMinutes"] = c.staleMinutes;
   JsonArray b = doc["brightness"].to<JsonArray>();
   for (int v : c.brightness) b.add(v);
+  doc["nightMode"] = c.nightEnabled;
   doc["nightBrightness"] = c.nightBrightness;
   doc["nightStart"] = hhmm(c.nightStart);
   doc["nightEnd"] = hhmm(c.nightEnd);
@@ -152,6 +153,7 @@ void handlePostConfig() {
     next.brightness[i] = in["brightness"][i] | 0;
     if (next.brightness[i] < 1 || next.brightness[i] > 100) return sendError("Brightness levels must be 1–100%");
   }
+  next.nightEnabled = in["nightMode"] | false;
   next.nightBrightness = in["nightBrightness"] | -1;
   if (next.nightBrightness < 0 || next.nightBrightness > 100) return sendError("Night brightness must be 0–100%");
   if (!parseHhmm(in["nightStart"] | "", next.nightStart) || !parseHhmm(in["nightEnd"] | "", next.nightEnd))

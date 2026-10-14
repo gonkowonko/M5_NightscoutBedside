@@ -15,6 +15,7 @@
 // age and range classification (see glucose.h).
 
 #include <M5Unified.h>
+#include <Preferences.h>
 #include <SD.h>
 
 #include "config.h"
@@ -53,7 +54,7 @@ bool mountSd() {
 }
 
 bool isNight() {
-  if (!timeIsValid() || gCfg.nightStart == gCfg.nightEnd) return false;
+  if (!gCfg.nightEnabled || !timeIsValid() || gCfg.nightStart == gCfg.nightEnd) return false;
   time_t t = time(nullptr);
   tm lt;
   localtime_r(&t, &lt);
@@ -78,6 +79,24 @@ void applyBrightness(uint32_t now) {
   M5.Display.setBrightness(percent * 255 / 100);
 }
 
+// The brightness level picked with button A survives restarts (kept in the
+// ESP32's NVS, not on the SD card).
+void loadLevel() {
+  Preferences prefs;
+  if (prefs.begin("clock", true)) {
+    gLevel = prefs.getInt("level", 0) % 3;
+    prefs.end();
+  }
+}
+
+void saveLevel() {
+  Preferences prefs;
+  if (prefs.begin("clock", false)) {
+    prefs.putInt("level", gLevel);
+    prefs.end();
+  }
+}
+
 void handleButtons(uint32_t now) {
   bool a = M5.BtnA.wasPressed();
   bool b = M5.BtnB.wasPressed();
@@ -90,7 +109,10 @@ void handleButtons(uint32_t now) {
   gPressedOnce = true;
   if (wasDimmed) return;
 
-  if (a) gLevel = (gLevel + 1) % 3;
+  if (a) {
+    gLevel = (gLevel + 1) % 3;
+    saveLevel();
+  }
   if (b) {
     gPage = gPage == Page::Clock ? Page::Status : gPage == Page::Status ? Page::Log : Page::Clock;
     displayInvalidate();
@@ -199,7 +221,8 @@ void showStatusPage(uint32_t now) {
     line("Time: %02d:%02d:%02d  TZ %s", lt.tm_hour, lt.tm_min, lt.tm_sec, gCfg.tz);
   else
     line("Time: not synced  TZ %s", gCfg.tz);
-  line("Brightness: %d%%%s", targetBrightness(now), isNight() ? " (night hours)" : "");
+  line("Brightness: %d%% (level %d)%s", targetBrightness(now), gLevel + 1,
+       !gCfg.nightEnabled ? "" : isNight() ? ", night dim on" : ", night dim off-hours");
   if (sensorFound())
     line("Sensor: DHT12 found, %.1f C, %.0f %%RH", sensorTemperature(), sensorHumidity());
   else
@@ -310,6 +333,7 @@ void applySettings(const AppConfig& s) {
   if (strcmp(s.tz, gCfg.tz) != 0) {
     strlcpy(gCfg.tz, s.tz, sizeof(gCfg.tz));
     timeSetup(gCfg.tz);
+  loadLevel();
   }
   gCfg.showMgdl = s.showMgdl;
   gCfg.timeFormat = s.timeFormat;
@@ -320,6 +344,7 @@ void applySettings(const AppConfig& s) {
   gCfg.redLow = s.redLow;
   gCfg.redHigh = s.redHigh;
   gCfg.staleMinutes = s.staleMinutes;
+  gCfg.nightEnabled = s.nightEnabled;
   gCfg.nightStart = s.nightStart;
   gCfg.nightEnd = s.nightEnd;
   gCfg.nightBrightness = s.nightBrightness;
@@ -352,6 +377,7 @@ void setup() {
   }
 
   timeSetup(gCfg.tz);
+  loadLevel();
   displayBegin();
   if (displayFontsLoaded() < 5) logEvent("Fonts: only %d/5 found in /fonts", displayFontsLoaded());
   if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");

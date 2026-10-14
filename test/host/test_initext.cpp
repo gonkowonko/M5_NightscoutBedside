@@ -19,7 +19,7 @@
 static const std::set<std::string> kManaged = {
     "nightscout", "token", "tz", "show_mgdl", "time_format", "date_format", "yellow_low",
     "yellow_high", "red_low", "red_high", "brightness1", "brightness2", "brightness3",
-    "stale_minutes", "night_start", "night_end", "night_brightness"};
+    "stale_minutes", "night_mode", "night_start", "night_end", "night_brightness"};
 
 static std::string keyOf(const String& line) {
   String t = IniText::trimmed(line);
@@ -45,6 +45,7 @@ static void applySave(IniText& ini) {
   ini.set("config", "brightness2", "100");
   ini.set("config", "brightness3", "1");
   ini.set("config", "stale_minutes", "10");
+  ini.set("config", "night_mode", "0");
   ini.set("config", "night_start", "22:00");
   ini.set("config", "night_end", "07:00");
   ini.set("config", "night_brightness", "1");

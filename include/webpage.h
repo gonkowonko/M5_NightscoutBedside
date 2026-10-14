@@ -33,6 +33,16 @@ input:focus,select:focus{outline:2px solid var(--green);outline-offset:-1px;bord
 .check input{width:auto;min-height:0}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .wifi{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 4px;cursor:pointer;color:var(--text);font-size:16px}
+.switch b{font-weight:500}
+.switch input{position:absolute;opacity:0;width:1px;height:1px;min-height:0}
+.switch i{flex:none;width:48px;height:28px;border-radius:14px;background:#2a2b2f;position:relative;transition:background .15s}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#d1d5db;transition:transform .15s}
+.switch input:checked+i{background:var(--green)}
+.switch input:checked+i::after{transform:translateX(20px);background:#000}
+.switch input:focus-visible+i{outline:2px solid var(--green);outline-offset:2px}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+fieldset:disabled{opacity:.4}
 button{font:inherit;border-radius:8px;border:1px solid var(--line);background:#1a1b1e;color:var(--text);
 padding:10px 14px;min-height:44px;cursor:pointer}
 button.remove{padding:0 12px;color:var(--red)}
@@ -71,18 +81,20 @@ button.remove{padding:0 12px;color:var(--red)}
 </section>
 
 <section><h2>Brightness</h2>
-<p class="hint" style="margin:0 0 4px">Button A cycles these three levels. The clock starts on level 1.</p>
+<p class="hint" style="margin:0 0 4px">Button A cycles these three levels. The clock remembers the one you pick.</p>
 <div class="row3">
 <div><label for="b1">Level 1 %</label><input id="b1" type="number" min="1" max="100" inputmode="numeric"></div>
 <div><label for="b2">Level 2 %</label><input id="b2" type="number" min="1" max="100" inputmode="numeric"></div>
 <div><label for="b3">Level 3 %</label><input id="b3" type="number" min="1" max="100" inputmode="numeric"></div>
 </div>
-<div class="row3">
+<label class="switch"><span><b>Dim at night</b><br><span class="hint">Off: the level you pick stays put, day and night.</span></span>
+<input type="checkbox" id="nightMode" role="switch"><i></i></label>
+<fieldset id="night"><div class="row3">
 <div><label for="nightStart">Night from</label><input id="nightStart" type="time"></div>
 <div><label for="nightEnd">Until</label><input id="nightEnd" type="time"></div>
 <div><label for="nightB">Night %</label><input id="nightB" type="number" min="0" max="100" inputmode="numeric"></div>
 </div>
-<p class="hint">At night the screen dims automatically; any button brings it back for 30 s. Same start and end time turns this off.</p>
+<p class="hint">Between these times the screen dims to the night level; any button brings it back for 30 s.</p></fieldset>
 </section>
 
 <section><h2>Clock</h2>
@@ -143,7 +155,7 @@ async function load(){
   thr.forEach(k=>$(k).value=cfg.showMgdl?cfg[k]:Number(cfg[k]).toFixed(1));
   $('stale').value=cfg.staleMinutes;
   ['b1','b2','b3'].forEach((k,i)=>$(k).value=cfg.brightness[i]);
-  $('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
+  $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
   $('tz').value=cfg.tz;syncTz();
   $('wifi').innerHTML='';cfg.wifi.forEach(wifiRow);
@@ -161,6 +173,7 @@ $('unit').onchange=()=>{const toMg=$('unit').value==='1';
   thr.forEach(k=>{const v=parseFloat($(k).value);if(!isNaN(v))$(k).value=toMg?Math.round(v*18):(v/18).toFixed(1)})};
 $('tzPreset').onchange=()=>{if($('tzPreset').value){$('tz').value=$('tzPreset').value;$('tz').style.display='none'}
   else{$('tz').style.display='block';$('tz').focus()}};
+$('nightMode').onchange=()=>$('night').disabled=!$('nightMode').checked;
 $('addWifi').onclick=()=>wifiRow({ssid:'',orig:-1,hasPass:false});
 
 function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
@@ -168,7 +181,7 @@ function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
 $('save').onclick=async()=>{
   const body={nightscout:$('nightscout').value.trim(),token:$('token').value.trim(),clearToken:$('clearToken').checked,
     showMgdl:$('unit').value==='1',staleMinutes:+$('stale').value,
-    brightness:['b1','b2','b3'].map(k=>+$(k).value),nightBrightness:+$('nightB').value,
+    brightness:['b1','b2','b3'].map(k=>+$(k).value),nightMode:$('nightMode').checked,nightBrightness:+$('nightB').value,
     nightStart:$('nightStart').value,nightEnd:$('nightEnd').value,
     timeFormat:+$('timeFormat').value,dateFormat:+$('dateFormat').value,tz:$('tz').value.trim(),
     wifi:[...$('wifi').children].map(d=>({ssid:d.querySelector('.ssid').value.trim(),

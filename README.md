@@ -37,9 +37,12 @@ data). Each region is drawn off-screen in a small sprite band and pushed in one 
 | B (middle) | Cycle pages: clock → status → log → clock |
 | C (right) | Fetch from Nightscout now |
 
-Between `night_start` and `night_end` the screen dims to `night_brightness`. A press of any
-button brings normal brightness back for 30 seconds. While the screen is dimmed, that first press only wakes
-it, so fumbling in the dark doesn't change settings.
+The level you pick with A is remembered across restarts.
+
+Night dimming is opt-in (`night_mode = 1`, or the switch on the settings page). When it's on, the screen dims
+to `night_brightness` between `night_start` and `night_end`. A press of any button brings normal brightness
+back for 30 seconds. While the screen is dimmed, that first press only wakes it, so fumbling in the dark
+doesn't change settings. When it's off, the brightness you picked stays put day and night.
 
 ## Settings page
 
@@ -48,7 +51,7 @@ resolve, use the IP address on the clock's status page (button B). There's no pa
 your network can open it, the same as the original firmware's web page.
 
 You can change all of these there: Nightscout site and token, units and
-range thresholds, stale time, the three brightness levels, night dimming, 12/24 h and date
+range thresholds, stale time, the three brightness levels, night dimming on/off and its times, 12/24 h and date
 format, time zone, and Wi-Fi networks. Passwords and the token are never sent to the page;
 leave a field blank to keep the current value.
 
@@ -119,6 +122,7 @@ New optional keys:
 | --- | --- | --- |
 | `tz` | `GMT0BST,M3.5.0/1,M10.5.0` | POSIX time zone string; handles BST/GMT automatically. If set, `time_zone`/`dst` are ignored. If neither `tz` nor `time_zone`/`dst` is present, the UK default applies. |
 | `stale_minutes` | `10` | Readings older than this are shown as stale |
+| `night_mode` | `0` | `1` turns on night dimming; `0` keeps the chosen brightness day and night |
 | `night_start` | `22:00` | Start of night dimming (local time) |
 | `night_end` | `07:00` | End of night dimming |
 | `night_brightness` | `5` | Brightness in percent during the night (0 turns the backlight off) |
