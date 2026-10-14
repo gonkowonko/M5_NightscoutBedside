@@ -125,6 +125,15 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 <p class="hint">Leave the password blank to keep it. Changes restart the clock.</p>
 </section>
 </form>
+
+<section><h2>Firmware</h2>
+<p class="hint" style="margin:0 0 12px">Running <b id="ver" style="color:var(--text)"></b>. Upload a new
+<code>firmware.bin</code> (from <code>.pio/build/m5stack-basic/</code>) to update over Wi-Fi.
+The clock checks the file before switching to it, then restarts.</p>
+<input id="fw" type="file" accept=".bin,application/octet-stream">
+<button type="button" id="upload" style="margin-top:12px;width:100%">Upload and install</button>
+<progress id="fwp" max="100" value="0" style="width:100%;margin-top:12px;display:none;accent-color:var(--green)"></progress>
+</section>
 </main>
 <div id="bar"><div><span id="msg"></span><button id="save" type="button">Save</button></div></div>
 
@@ -147,6 +156,7 @@ async function load(){
   $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
   $('tz').value=cfg.tz;syncTz();
+  $('ver').textContent='v'+cfg.version+' ('+cfg.build+')';
   const w=cfg.wifi[0]||{ssid:'',hasPass:false};
   $('ssid').value=w.ssid;$('wpass').value='';$('wpass').placeholder=w.hasPass?'Password unchanged':'Password';
 }
@@ -185,6 +195,22 @@ $('save').onclick=async()=>{
     if(j.restart){msg('Saved. Restarting the clock…','ok');setTimeout(()=>location.reload(),15000)}
     else{msg('Saved and applied','ok');$('token').value='';$('clearToken').checked=false;await load();$('save').disabled=false}
   }catch(e){msg('Clock not reachable','err');$('save').disabled=false}
+};
+
+$('upload').onclick=()=>{
+  const f=$('fw').files[0];
+  if(!f){msg('Choose a firmware .bin file first','err');return}
+  if(!f.name.endsWith('.bin')){msg('That is not a .bin file','err');return}
+  const fd=new FormData();fd.append('firmware',f,f.name);
+  const x=new XMLHttpRequest();
+  $('upload').disabled=$('save').disabled=true;$('fwp').style.display='block';$('fwp').value=0;
+  msg('Uploading firmware… keep this page open');
+  x.upload.onprogress=e=>{if(e.lengthComputable)$('fwp').value=e.loaded/e.total*100};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
+    if(x.status===200&&j.ok){$('fwp').value=100;msg('Installed. Restarting the clock…','ok');setTimeout(()=>location.reload(),20000)}
+    else{msg(j.error||'Update failed','err');$('upload').disabled=$('save').disabled=false}};
+  x.onerror=()=>{msg('Upload failed: clock not reachable','err');$('upload').disabled=$('save').disabled=false};
+  x.open('POST','/update');x.send(fd);
 };
 
 load().catch(()=>msg('Could not load settings','err'));

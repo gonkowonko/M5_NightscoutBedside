@@ -4,6 +4,8 @@
 #include <WebServer.h>
 
 #include "eventlog.h"
+#include "ota.h"
+#include "version.h"
 #include "webpage.h"
 
 namespace {
@@ -82,6 +84,8 @@ void handleGetConfig() {
   doc["timeFormat"] = c.timeFormat;
   doc["dateFormat"] = c.dateFormat;
   doc["tz"] = c.tz;
+  doc["version"] = FW_VERSION;
+  doc["build"] = FW_BUILD;
   JsonArray wifi = doc["wifi"].to<JsonArray>();
   for (int i = 0; i < c.wifiCount; i++) {
     JsonObject w = wifi.add<JsonObject>();
@@ -199,6 +203,41 @@ void handlePostConfig() {
   sendJson(200, out);
 }
 
+// Firmware upload (multipart form, field "firmware"). The upload callback
+// streams chunks into the inactive app slot; this one runs afterwards.
+bool gUploadOk = false;
+
+void handleUpdateDone() {
+  JsonDocument out;
+  out["ok"] = gUploadOk;
+  if (gUploadOk) {
+    logEvent("Update installed, restarting");
+    gRestartAt = millis() + 1500;
+  } else {
+    out["error"] = otaError()[0] ? otaError() : "Upload failed";
+  }
+  sendJson(gUploadOk ? 200 : 400, out);
+}
+
+void handleUpdateUpload() {
+  HTTPUpload& up = gServer.upload();
+  switch (up.status) {
+    case UPLOAD_FILE_START:
+      gUploadOk = otaWebStart(gServer.clientContentLength());
+      break;
+    case UPLOAD_FILE_WRITE:
+      if (gUploadOk) gUploadOk = otaWebWrite(up.buf, up.currentSize);
+      break;
+    case UPLOAD_FILE_END:
+      if (gUploadOk) gUploadOk = otaWebFinish();
+      break;
+    case UPLOAD_FILE_ABORTED:
+      otaWebAbort();
+      gUploadOk = false;
+      break;
+  }
+}
+
 }  // namespace
 
 void webBegin(const AppConfig& current, const char* iniPath, WebHooks hooks) {
@@ -209,6 +248,7 @@ void webBegin(const AppConfig& current, const char* iniPath, WebHooks hooks) {
   gServer.on("/api/config", HTTP_GET, handleGetConfig);
   gServer.on("/api/config", HTTP_POST, handlePostConfig);
   gServer.on("/api/status", HTTP_GET, handleStatus);
+  gServer.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
   gServer.onNotFound([] {
     gServer.sendHeader("Location", "/");
     gServer.send(302, "text/plain", "");

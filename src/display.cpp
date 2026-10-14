@@ -219,6 +219,7 @@ void drawTrend(LGFX_Sprite& s, Trend t, int x, int cy, uint32_t color) {
 ScreenModel gShown;  // what is currently on the screen
 bool gFullRedraw = true;
 bool gDebugShown = false;
+bool gProgressShown = false;
 
 void drawTopLine(const ScreenModel& m) {
   renderRegion(kTopY, kTopH, [&](LGFX_Sprite& s, int oy) {
@@ -311,6 +312,36 @@ void displayMessage(const char* title, const char* detail) {
   gFullRedraw = true;
 }
 
+void displayProgress(const char* title, const char* detail, int percent) {
+  auto& d = M5.Display;
+  static int lastPercent = -2;
+  if (!gProgressShown || gFullRedraw || percent < lastPercent) {
+    d.fillScreen(kBg);
+    gProgressShown = true;
+    gFullRedraw = false;
+    gDebugShown = true;  // the main screen repaints fully afterwards
+    lastPercent = -2;
+  }
+  d.setTextDatum(textdatum_t::middle_center);
+  d.setTextPadding(kContentW);
+  d.setFont(&fonts::FreeSansBold12pt7b);
+  d.setTextSize(1);
+  d.setTextColor(kClockColor, kBg);
+  d.drawString(title, kW / 2, kH / 2 - 36);
+  d.setFont(&fonts::Font2);
+  d.setTextColor(kDim, kBg);
+  d.drawString(detail, kW / 2, kH / 2 + 34);
+  d.setTextPadding(0);
+  if (percent >= 0 && percent != lastPercent) {
+    constexpr int kBarH = 8;
+    int y = kH / 2 - kBarH / 2;
+    d.fillRoundRect(kPadX, y, kContentW, kBarH, kBarH / 2, kDivider);
+    int w = kContentW * std::min(percent, 100) / 100;
+    if (w > 0) d.fillRoundRect(kPadX, y, std::max(w, kBarH), kBarH, kBarH / 2, kGreen);
+  }
+  lastPercent = percent;
+}
+
 void displayInvalidate() { gFullRedraw = true; }
 
 void displayUpdate(const ScreenModel& m) {
@@ -326,6 +357,7 @@ void displayUpdate(const ScreenModel& m) {
   gShown = m;
   gFullRedraw = false;
   gDebugShown = false;
+  gProgressShown = false;
 }
 
 void displayDebug(const char* const* lines, int count) {
@@ -349,4 +381,5 @@ void displayDebug(const char* const* lines, int count) {
   d.setTextPadding(0);
   gDebugShown = true;
   gFullRedraw = false;
+  gProgressShown = false;
 }

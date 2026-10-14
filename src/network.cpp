@@ -139,6 +139,9 @@ void networkBegin(const AppConfig& cfg) {
   WiFi.persistent(false);
   WiFi.setHostname("m5-bedside-clock");  // must precede mode() on arduino-esp32 2.x
   WiFi.mode(WIFI_STA);
+  // Always on USB power: modem sleep only adds latency, and it makes OTA
+  // uploads stall and time out.
+  WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);  // WiFiMulti handles reconnects across all networks
   for (int i = 0; i < cfg.wifiCount; i++) gWifi.addAP(cfg.ssid[i], cfg.pass[i]);
 

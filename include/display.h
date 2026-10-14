@@ -33,6 +33,9 @@ void displayMessage(const char* title, const char* detail);
 // Draws the main screen, touching only the regions that changed.
 void displayUpdate(const ScreenModel& m);
 
+// Full-screen progress bar (firmware updates). percent < 0 shows only text.
+void displayProgress(const char* title, const char* detail, int percent);
+
 // Forces a full repaint on the next displayUpdate()/displayDebug().
 void displayInvalidate();
 

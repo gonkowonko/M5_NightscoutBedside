@@ -87,11 +87,32 @@ Requires [PlatformIO](https://platformio.org/) (`brew install platformio` on mac
 
 ```bash
 pio run                 # build
+pio run -e ota -t upload  # build and install over Wi-Fi (m5clock.local)
 pio run -t upload       # build and flash over USB
-pio device monitor      # serial log, 115200 baud
+pio device monitor      # serial log over USB, 115200 baud
 ```
 
+### Updating over Wi-Fi
+
+Once this firmware is on the clock, updates don't need a cable:
+
+- **From PlatformIO:** `pio run -e ota -t upload` sends the build to `m5clock.local` over Wi-Fi.
+- **From the settings page:** in the Firmware section, pick `.pio/build/m5stack-basic/firmware.bin` and
+  press *Upload and install*.
+
+Either way the clock shows a progress bar, checks the new image, and only then restarts into it. If the
+upload fails or the file isn't valid firmware, the current firmware keeps running. There is no password,
+the same as the settings page.
+
+The flash is split into two 1.9 MB app slots (`min_spiffs.csv`) so one can be written while the other runs.
+Coming from the original firmware, or from builds before 1.1.0, the first flash has to be over USB so the new
+layout is written.
+
 PlatformIO normally finds the serial port on its own. If it doesn't, add `--upload-port /dev/cu.usbserial-XXXX`.
+Flashing runs at 115200 baud, because faster speeds were unreliable through a USB-C-to-A adapter.
+
+**USB cable:** the original Basic's USB-C port only works with a **USB-A to USB-C** cable. A USB-C to USB-C
+cable doesn't power it up or connect, so on a Mac with only USB-C ports use a USB-A adapter or hub.
 
 ## SD card
 
@@ -189,6 +210,7 @@ src/network.cpp      background task: Wi-Fi, NTP, 60 s fetch (include/network.h)
 src/nightscout.cpp   HTTPS request + JSON parsing           (include/nightscout.h)
 src/sensor.cpp       DHT12 over I2C                         (include/sensor.h)
 src/display.cpp      layout A rendering, status/log pages   (include/display.h)
+src/ota.cpp          firmware updates over Wi-Fi            (include/ota.h)
 src/eventlog.cpp     in-memory event log                    (include/eventlog.h)
 src/webconfig.cpp    settings web page + JSON API           (include/webconfig.h, webpage.h)
 include/initext.h    INI line editor used when saving       (host test: test/host)

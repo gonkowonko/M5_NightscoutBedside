@@ -9,6 +9,7 @@
 //   display     - flicker-free rendering of the clock, status and log pages
 //   eventlog    - in-memory log of Wi-Fi/Nightscout/NTP/sensor events
 //   webconfig   - settings page at http://m5clock.local, edits M5NS.INI
+//   ota         - firmware updates over Wi-Fi (PlatformIO or the settings page)
 //   main        - glue: buttons, brightness, building what the screen shows
 //
 // Future alarms belong next to buildModel(): they need the same reading,
@@ -25,13 +26,14 @@
 #include "network.h"
 #include "sensor.h"
 #include "timekeeping.h"
+#include "ota.h"
+#include "version.h"
 #include "webconfig.h"
 
 // M5GFX copies one glyph bitmap onto the stack while drawing VLW fonts
 // (the clock digits are ~6 KB each), so give the loop task some headroom.
 SET_LOOP_TASK_STACK_SIZE(16 * 1024);
 
-#define FW_VERSION "1.0.0"
 
 namespace {
 
@@ -391,6 +393,7 @@ void setup() {
 void loop() {
   M5.update();
   webLoop();
+  otaLoop();
   uint32_t now = millis();
   handleButtons(now);
   sensorUpdate(now);
