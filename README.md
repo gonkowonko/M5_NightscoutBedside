@@ -47,7 +47,7 @@ Open **http://m5clock.local** on a phone or computer on the same Wi-Fi. If that 
 resolve, use the IP address on the clock's status page (button B). There's no password: anyone on
 your network can open it, the same as the original firmware's web page.
 
-Everything in the table below can be changed there: Nightscout site and token, units and
+You can change all of these there: Nightscout site and token, units and
 range thresholds, stale time, the three brightness levels, night dimming, 12/24 h and date
 format, time zone, and Wi-Fi networks. Passwords and the token are never sent to the page;
 leave a field blank to keep the current value.
