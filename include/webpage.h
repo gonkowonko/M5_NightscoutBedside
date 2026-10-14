@@ -32,7 +32,6 @@ input:focus,select:focus{outline:2px solid var(--green);outline-offset:-1px;bord
 .check{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--dim);font-size:14px}
 .check input{width:auto;min-height:0}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
-.wifi{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 4px;cursor:pointer;color:var(--text);font-size:16px}
 .switch b{font-weight:500}
 .switch input{position:absolute;opacity:0;width:1px;height:1px;min-height:0}
@@ -45,14 +44,13 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 fieldset:disabled{opacity:.4}
 button{font:inherit;border-radius:8px;border:1px solid var(--line);background:#1a1b1e;color:var(--text);
 padding:10px 14px;min-height:44px;cursor:pointer}
-button.remove{padding:0 12px;color:var(--red)}
 #bar{position:fixed;left:0;right:0;bottom:0;background:rgba(0,0,0,.92);border-top:1px solid var(--line);padding:12px 16px}
 #bar div{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
 #save{background:var(--green);color:#000;border:0;font-weight:600;flex:none;padding:10px 24px}
 #save:disabled{opacity:.5}
 #msg{color:var(--dim);font-size:14px;flex:1}
 #msg.err{color:var(--red)}#msg.ok{color:var(--green)}
-@media (max-width:420px){.row3{grid-template-columns:1fr 1fr}.wifi{grid-template-columns:1fr auto}.wifi .pw{grid-column:1}}
+@media (max-width:420px){.row3{grid-template-columns:1fr 1fr}}
 </style></head><body><main>
 <header><h1>Bedside Clock</h1><div id="now">&nbsp;</div></header>
 
@@ -120,9 +118,11 @@ button.remove{padding:0 12px;color:var(--red)}
 </section>
 
 <section><h2>Wi-Fi</h2>
-<div id="wifi"></div>
-<button type="button" id="addWifi">Add network</button>
-<p class="hint">Tried in turn; the strongest one in range wins. Leave a password blank to keep it. Changes restart the clock.</p>
+<div class="row">
+<div><label for="ssid">Network name</label><input id="ssid" spellcheck="false" autocapitalize="off"></div>
+<div><label for="wpass">Password</label><input id="wpass" type="password"></div>
+</div>
+<p class="hint">Leave the password blank to keep it. Changes restart the clock.</p>
 </section>
 </form>
 </main>
@@ -132,17 +132,6 @@ button.remove{padding:0 12px;color:var(--red)}
 const $=id=>document.getElementById(id);
 let cfg=null;
 const thr=['redLow','yellowLow','yellowHigh','redHigh'];
-
-function wifiRow(w){
-  const d=document.createElement('div');d.className='wifi';d.dataset.orig=w.orig;
-  d.innerHTML='<input class="ssid" placeholder="Network name" spellcheck="false" autocapitalize="off">'+
-    '<input class="pw" type="password" placeholder="'+(w.hasPass?'Password unchanged':'Password')+'">'+
-    '<button type="button" class="remove" aria-label="Remove network">✕</button>';
-  d.querySelector('.ssid').value=w.ssid;
-  d.querySelector('.remove').onclick=()=>{d.remove();addState()};
-  $('wifi').appendChild(d);addState();
-}
-function addState(){$('addWifi').disabled=$('wifi').children.length>=10}
 
 function syncTz(){const o=[...$('tzPreset').options].find(o=>o.value===$('tz').value);
   $('tzPreset').value=o?o.value:'';$('tz').style.display=o?'none':'block'}
@@ -158,7 +147,8 @@ async function load(){
   $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
   $('tz').value=cfg.tz;syncTz();
-  $('wifi').innerHTML='';cfg.wifi.forEach(wifiRow);
+  const w=cfg.wifi[0]||{ssid:'',hasPass:false};
+  $('ssid').value=w.ssid;$('wpass').value='';$('wpass').placeholder=w.hasPass?'Password unchanged':'Password';
 }
 
 async function status(){
@@ -174,7 +164,6 @@ $('unit').onchange=()=>{const toMg=$('unit').value==='1';
 $('tzPreset').onchange=()=>{if($('tzPreset').value){$('tz').value=$('tzPreset').value;$('tz').style.display='none'}
   else{$('tz').style.display='block';$('tz').focus()}};
 $('nightMode').onchange=()=>$('night').disabled=!$('nightMode').checked;
-$('addWifi').onclick=()=>wifiRow({ssid:'',orig:-1,hasPass:false});
 
 function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
 
@@ -184,8 +173,9 @@ $('save').onclick=async()=>{
     brightness:['b1','b2','b3'].map(k=>+$(k).value),nightMode:$('nightMode').checked,nightBrightness:+$('nightB').value,
     nightStart:$('nightStart').value,nightEnd:$('nightEnd').value,
     timeFormat:+$('timeFormat').value,dateFormat:+$('dateFormat').value,tz:$('tz').value.trim(),
-    wifi:[...$('wifi').children].map(d=>({ssid:d.querySelector('.ssid').value.trim(),
-      pass:d.querySelector('.pw').value,orig:+d.dataset.orig})).filter(w=>w.ssid)};
+    wifi:[{ssid:$('ssid').value.trim(),pass:$('wpass').value,
+      orig:$('ssid').value.trim()===(cfg.wifi[0]||{}).ssid?0:-1}]};
+  if(!body.wifi[0].ssid){msg('Enter the Wi-Fi network name','err');return}
   thr.forEach(k=>body[k]=parseFloat($(k).value));
   $('save').disabled=true;msg('Saving…');
   try{

@@ -52,7 +52,7 @@ your network can open it, the same as the original firmware's web page.
 
 You can change all of these there: Nightscout site and token, units and
 range thresholds, stale time, the three brightness levels, night dimming on/off and its times, 12/24 h and date
-format, time zone, and Wi-Fi networks. Passwords and the token are never sent to the page;
+format, time zone, and the Wi-Fi network. Passwords and the token are never sent to the page;
 leave a field blank to keep the current value.
 
 Saving writes `M5NS.INI` on the SD card. Only the keys this firmware manages are edited in place,
