@@ -24,8 +24,7 @@ struct ScreenModel {
   char age[20] = "";    // "3 min ago" / "just now"
 };
 
-void displayBegin();       // M5.begin() and SD must already be up
-int displayFontsLoaded();  // number of .vlw fonts loaded from /fonts (of 5)
+void displayBegin();  // after M5.begin()
 
 // Full-screen centred message (boot, missing SD card, ...).
 void displayMessage(const char* title, const char* detail);

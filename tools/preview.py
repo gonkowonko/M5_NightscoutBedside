@@ -14,12 +14,12 @@ import struct
 from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FONTS = os.path.join(ROOT, "SD", "fonts")
+FONTS = os.path.join(ROOT, "fonts")
 
 W, H = 320, 240
 PAD_X, PAD_TOP, PAD_BOTTOM = 14, 10, 12
 CONTENT_W = W - 2 * PAD_X
-TOP_Y, TOP_H = PAD_TOP, 18
+TOP_Y, TOP_H = PAD_TOP, 22
 STRIP_H = 62
 STRIP_Y = H - PAD_BOTTOM - STRIP_H
 DIVIDER_Y = STRIP_Y - 1
@@ -88,8 +88,8 @@ def screen(f, date, temp, time, bg=None, delta="", trend=None, color=GREEN, stal
     img = Image.new("RGB", (W, H), "black")
     d = ImageDraw.Draw(img)
     cy = TOP_Y + TOP_H // 2
-    f["text15"].draw(img, date, PAD_X, cy, "left", DIM)
-    f["text15"].draw(img, temp, PAD_X + CONTENT_W, cy, "right", DIM)
+    f["text18"].draw(img, date, PAD_X, cy, "left", DIM)
+    f["text18"].draw(img, temp, PAD_X + CONTENT_W, cy, "right", DIM)
     f["clock"].draw(img, time, PAD_X + CONTENT_W // 2, CLOCK_Y + CLOCK_H // 2, "center", CLOCK)
     d.line([(PAD_X, DIVIDER_Y), (PAD_X + CONTENT_W - 1, DIVIDER_Y)], fill=DIVIDER)
 
@@ -113,7 +113,7 @@ def screen(f, date, temp, time, bg=None, delta="", trend=None, color=GREEN, stal
 
 
 def main():
-    f = {n: Vlw(os.path.join(FONTS, n + ".vlw")) for n in ("clock", "bg", "delta", "text15", "text14")}
+    f = {n: Vlw(os.path.join(FONTS, n + ".vlw")) for n in ("clock", "bg", "delta", "text18", "text14")}
     shots = [
         screen(f, "Wed 14 Oct", "19.5°C", "23:47", "5.8", "+0.2", "Flat", GREEN, age="2 min ago"),
         screen(f, "Wed 14 Oct", "19.5°C", "03:12", "10.4", "+0.6", "FortyFiveUp", AMBER, age="just now"),

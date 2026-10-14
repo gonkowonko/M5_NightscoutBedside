@@ -7,9 +7,10 @@ into the VLW anti-aliased font format read by M5GFX / LovyanGFX / TFT_eSPI.
 Usage (from the repo root):
     python3 -m venv tools/.venv
     tools/.venv/bin/pip install pillow
-    tools/.venv/bin/python tools/make_fonts.py          # writes SD/fonts/*.vlw
+    tools/.venv/bin/python tools/make_fonts.py          # writes fonts/*.vlw
 
-Copy the SD/fonts folder to the root of the microSD card (-> /fonts/*.vlw).
+The fonts are embedded in the firmware (board_build.embed_files in
+platformio.ini), so rebuild and flash after regenerating them.
 
 The Barlow fonts are (c) The Barlow Project Authors, SIL Open Font License 1.1
 (see tools/ttf/OFL.txt). If the .ttf files are missing they are downloaded
@@ -26,7 +27,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TTF_DIR = os.path.join(ROOT, "tools", "ttf")
-OUT_DIR = os.path.join(ROOT, "SD", "fonts")
+OUT_DIR = os.path.join(ROOT, "fonts")
 
 TTF_URLS = {
     "BarlowCondensed-SemiBold.ttf":
@@ -53,7 +54,7 @@ FONTS = {
     "clock": (NUM_TTF, None, "0123456789:-"),
     "bg":    (NUM_TTF, 58, "0123456789.-"),
     "delta": (NUM_TTF, 28, "0123456789.+-" + MINUS),
-    "text15": (TXT_TTF, 15, ASCII + "°"),
+    "text18": (TXT_TTF, 18, ASCII + "°"),
     "text14": (TXT_TTF, 14, ASCII + "°"),
 }
 
@@ -115,7 +116,7 @@ def clock_size():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--out", default=OUT_DIR, help="output directory (default SD/fonts)")
+    ap.add_argument("--out", default=OUT_DIR, help="output directory (default fonts/)")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 

@@ -50,9 +50,9 @@ bool gPressedOnce = false;
 int gAppliedBrightness = -1;
 
 bool mountSd() {
-  // The SD card shares the SPI bus with the LCD (CS on GPIO 4). The 5 fonts
-  // stay open for glyph streaming; saving settings needs up to 3 more.
-  return SD.begin(GPIO_NUM_4, SPI, 25000000, "/sd", 10);
+  // The SD card shares the SPI bus with the LCD (CS on GPIO 4). It only holds
+  // M5NS.INI; saving settings opens up to 3 files at once.
+  return SD.begin(GPIO_NUM_4, SPI, 25000000, "/sd", 4);
 }
 
 bool isNight() {
@@ -231,7 +231,6 @@ void showStatusPage(uint32_t now) {
          sensorTemperature(), sensorHumidity());
   else
     line("Sensor: DHT12 not found");
-  line("Fonts: %d/5 loaded from SD /fonts", displayFontsLoaded());
   line("Heap: %u free, %u min, %u max block", ESP.getFreeHeap(), ESP.getMinFreeHeap(),
        ESP.getMaxAllocHeap());
   uint32_t up = now / 1000;
@@ -384,7 +383,6 @@ void setup() {
   timeSetup(gCfg.tz);
   loadLevel();
   displayBegin();
-  if (displayFontsLoaded() < 5) logEvent("Fonts: only %d/5 found in /fonts", displayFontsLoaded());
   if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");
   networkBegin(gCfg);
   webBegin(gCfg, kIniPath, {applySettings, buildModel});

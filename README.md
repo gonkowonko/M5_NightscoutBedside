@@ -36,7 +36,7 @@ using made-up example data.*
 
 ## Features
 
-- **Big, clear clock** in Barlow Condensed, with the date and room temperature above it.
+- **Big, clear clock** in Barlow Condensed, with the date and room temperature (to 0.1°) above it.
 - **Nightscout glucose** with trend arrow, change since the last reading, and how old it is. Fetched every 60 s.
 - **Your colours:** green in range, amber and red at the thresholds you choose, in mmol/L or mg/dL.
 - **Stale warning:** if no new reading arrives for 10 minutes (adjustable), the value greys out and is struck through.
@@ -53,7 +53,7 @@ using made-up example data.*
 | --- | --- |
 | **M5Stack Basic Core** (K001, ESP32, 320×240 screen) | The original Basic/Gray. Other M5Stacks are untested. |
 | **M5Stack BTC Standing Base** | Optional. Provides the DHT12 temperature sensor. Without it the temperature is just blank. |
-| **microSD card** | Any size, formatted FAT32. Holds the settings and fonts. |
+| **microSD card** | Any size, formatted FAT32. Holds the settings file. |
 | **USB-A to USB-C cable** | Needed once, for the first flash. **A USB-C to USB-C cable won't work** with the original Basic: its port lacks the resistors that USB-C chargers and computers look for. On a USB-C-only Mac, use a USB-A adapter or hub. |
 | A **Nightscout** site | Its address and, if it's locked down, an access token with the `readable` role. |
 | A computer with **[PlatformIO](https://platformio.org/)** | `brew install platformio` on macOS, or the VS Code extension. |
@@ -69,14 +69,7 @@ cd M5_NightscoutBedside
 
 ### 2. Prepare the SD card
 
-Copy the **contents** of the [`SD/`](SD) folder to the root of the card, so it looks like this:
-
-```
-M5NS.INI
-fonts/clock.vlw  fonts/bg.vlw  fonts/delta.vlw  fonts/text14.vlw  fonts/text15.vlw  fonts/OFL.txt
-```
-
-Open `M5NS.INI` in a text editor and fill in at least:
+Copy [`SD/M5NS.INI`](SD/M5NS.INI) to the root of the card, open it in a text editor and fill in at least:
 
 ```ini
 [config]
@@ -96,8 +89,8 @@ Comments (`;` or `#`) must be on their own line. Anything after a value counts a
 
 The other settings have sensible defaults, and you can change them all later from the settings page.
 
-> If you already run M5_NightscoutMon, keep your existing `M5NS.INI`. Just add the `fonts` folder,
-> and optionally a `tz = …` line (see [Configuration](#configuration)).
+> If you already run M5_NightscoutMon, keep your existing `M5NS.INI`, optionally adding a
+> `tz = …` line (see [Configuration](#configuration)).
 
 Put the card in the M5Stack.
 
@@ -154,7 +147,7 @@ dims between the hours you set. A press of any button brings normal brightness b
 is dimmed, that first press only wakes it, so fumbling in the dark doesn't change anything.
 
 **Status page:** Wi-Fi network and signal, IP address, Nightscout site, last fetch time and result, latest
-reading, time zone, brightness, sensor, fonts loaded, free memory and uptime.
+reading, time zone, brightness, sensor (corrected and raw), free memory and uptime.
 
 **Log page:** the last 13 notable events, newest first, so you can see what happened overnight.
 Repeats are collapsed (`02:10-02:24 NS HTTP 502 x14`).
@@ -165,7 +158,7 @@ Repeats are collapsed (`02:10-02:24 NS HTTP 502 x14`).
 | Wi-Fi connected / lost | `Wi-Fi: MyHomeWiFi -61 dBm`, `Wi-Fi lost` |
 | Nightscout problems and recovery | `NS HTTP 502`, `NS OK again after 3 failures` |
 | Data going stale, and why | `Stale: Nightscout has no new data`, `Stale: fetches failing` |
-| Time sync, sensor, fonts, I2C devices | `Time synced (NTP)`, `Sensor: DHT12 found`, `I2C: 5C 75` |
+| Time sync, sensor, I2C devices | `Time synced (NTP)`, `Sensor: DHT12 found`, `I2C: 5C 75` |
 
 The log is kept in memory, so it starts fresh after a restart, but the first entry records why the clock restarted.
 
@@ -252,7 +245,6 @@ The SD card doesn't need changing.
 | `---` instead of a reading | Check *Result* on the status page: `HTTP 401` means a wrong or missing token. |
 | No temperature | The DHT12 is in the stand. The log's `I2C:` line should list `5C`. |
 | Temperature reads high | The sensor sits under the warm M5Stack. Set a temperature correction on the settings page. |
-| Blocky digits | The `fonts` folder is missing from the SD card (status page: *Fonts 0/5*). |
 | `m5clock.local` is slow or doesn't open | Use the IP address from the status page. Some apps wait ~5 s for an IPv6 answer first. |
 
 ## Development
@@ -277,8 +269,8 @@ Some design notes:
 
 - **No PSRAM on the Basic**, so there's no full-screen buffer. Each screen region is drawn into one reused
   292×32 sprite band and pushed in one go, which avoids flicker. Only regions that changed are redrawn.
-- **Fonts** are anti-aliased `.vlw` files streamed from the SD card a glyph at a time. The clock digits alone
-  would be ~60 KB in RAM. Missing fonts fall back to M5GFX's built-in ones.
+- **Fonts** are anti-aliased `.vlw` files in [`fonts/`](fonts), embedded in the firmware with
+  `board_build.embed_files` and read straight from flash, so they use no RAM and change with a normal update.
 - **Network** (Wi-Fi, NTP, HTTPS) runs in its own FreeRTOS task, so the clock and buttons never wait on it.
   Wi-Fi power saving is off, because the clock is always on USB power.
 - Sound alarms aren't implemented. They would hook in where `main.cpp` builds the screen model, using
@@ -288,7 +280,7 @@ Regenerating assets (fonts, screen previews and the settings-page screenshot):
 
 ```bash
 python3 -m venv tools/.venv && tools/.venv/bin/pip install pillow
-tools/.venv/bin/python tools/make_fonts.py     # SD/fonts/*.vlw from the Barlow TTFs
+tools/.venv/bin/python tools/make_fonts.py     # fonts/*.vlw from the Barlow TTFs (then rebuild)
 tools/.venv/bin/python tools/preview.py        # docs/preview.png, docs/clock.png
 python3 tools/settings_screenshot.py           # docs/settings.png (needs Google Chrome)
 ```
