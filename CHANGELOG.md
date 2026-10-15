@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — 2026-10-15
+
+- **Startup splash:** a moon logo, the version, and a live checklist (Settings → Wi-Fi → Time →
+  Nightscout) that ticks off as the clock starts. A problem shows a red ✗ and a one-line hint, such as
+  "Check the Wi-Fi password in M5NS.INI". The splash switches to the clock 2.5 s after the first
+  reading, or after 30 s, or when you press any button.
+- Missing SD card or `M5NS.INI` now shows on the splash instead of as a plain message.
+
 ## 1.3.2 — 2026-10-15
 
 - Settings page: the Save bar stays clear of the iPhone's rounded corners, home bar and Safari's toolbar

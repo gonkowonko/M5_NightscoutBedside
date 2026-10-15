@@ -27,8 +27,25 @@ struct ScreenModel {
 
 void displayBegin();  // after M5.begin()
 
-// Full-screen centred message (boot, missing SD card, ...).
-void displayMessage(const char* title, const char* detail);
+// ---- Startup splash ----------------------------------------------------------
+enum class StepState : uint8_t { Todo, Wait, Ok, Fail };
+
+struct SplashStep {
+  StepState state = StepState::Todo;
+  char label[12] = "";
+  char detail[28] = "";  // right-aligned, e.g. "MyWiFi · -52"
+};
+
+struct SplashModel {
+  SplashStep steps[4];  // Settings, Wi-Fi, Time, Nightscout
+  char footer[56] = "";
+  bool footerAlert = false;  // hint in red
+  uint8_t frame = 0;         // animation frame for waiting dots (0-2)
+};
+
+// Draws the startup splash (logo, title, version, checklist, footer),
+// repainting only what changed.
+void displaySplash(const SplashModel& m, const char* version);
 
 // Draws the main screen, touching only the regions that changed.
 void displayUpdate(const ScreenModel& m);

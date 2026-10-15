@@ -61,6 +61,7 @@ uint32_t rangeColor(BgRange r) {
 EMBEDDED_FONT(clock)
 EMBEDDED_FONT(bg)
 EMBEDDED_FONT(delta)
+EMBEDDED_FONT(title)
 EMBEDDED_FONT(text18)
 EMBEDDED_FONT(text14)
 
@@ -76,20 +77,24 @@ Face gClockFace(clock_start, clock_end);
 Face gBgFace(bg_start, bg_end);
 Face gDeltaFace(delta_start, delta_end);
 Face gTextFace(text18_start, text18_end);  // date, temperature
-Face gSmallFace(text14_start, text14_end);  // "N min ago"
-Face* const gFaces[] = {&gClockFace, &gBgFace, &gDeltaFace, &gTextFace, &gSmallFace};
+Face gSmallFace(text14_start, text14_end);  // "N min ago", splash checklist
+Face gTitleFace(title_start, title_end);    // splash title
+Face* const gFaces[] = {&gClockFace, &gBgFace, &gDeltaFace, &gTextFace, &gSmallFace, &gTitleFace};
 
 uint32_t be32(const uint8_t* p) { return (uint32_t)p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3]; }
 
-// Reads the "0" glyph's top offset from the VLW metrics table.
+// Reads a glyph's top offset (height above the baseline) from the VLW
+// metrics table: "0" for fonts with digits, else "H".
 int vlwDigitHeight(lgfx::DataWrapper& d, int count) {
   uint8_t m[28];
+  int capH = 0;
   for (int i = 0; i < count; i++) {
     d.seek(24 + i * 28);
     if (d.read(m, sizeof(m)) != sizeof(m)) break;
     if (be32(m) == '0') return (int32_t)be32(m + 16);
+    if (be32(m) == 'H') capH = (int32_t)be32(m + 16);
   }
-  return 0;
+  return capH;
 }
 
 void loadFace(Face& f) {
@@ -224,6 +229,54 @@ bool stripChanged(const ScreenModel& a, const ScreenModel& b) {
          a.ageAlert != b.ageAlert;
 }
 
+// ---- Startup splash ---------------------------------------------------------
+
+constexpr int kSplashHeadY = 6;    // logo, title, version
+constexpr int kSplashHeadH = 116;
+constexpr int kSplashListY = 124;  // checklist
+constexpr int kSplashRowH = 19;
+constexpr int kSplashListH = 4 * kSplashRowH;
+constexpr int kSplashRuleY = kSplashListY + kSplashListH + 6;
+constexpr int kSplashFootY = kSplashRuleY + 4;
+constexpr int kSplashFootH = kH - kSplashFootY - 2;
+constexpr int kSplashIconX = 60;    // content coordinates (x = 0 at the 14px pad)
+constexpr int kSplashLabelX = 70;
+constexpr int kSplashDetailX = 232;
+
+bool gSplashShown = false;
+SplashModel gSplashDrawn;
+
+// Crescent moon with a green "blip": the project's mark.
+void drawLogo(LGFX_Sprite& s, int cx, int cy) {
+  s.fillSmoothCircle(cx, cy, 24, kClockColor);
+  s.fillSmoothCircle(cx + 13, cy - 9, 20, kBg);
+  s.fillSmoothCircle(cx + 14, cy + 8, 5, kGreen);
+}
+
+void drawStepIcon(LGFX_Sprite& s, StepState st, int x, int cy, uint8_t frame) {
+  switch (st) {
+    case StepState::Ok:
+      s.drawWideLine(x - 5, cy, x - 2, cy + 3, 1.0f, kGreen);
+      s.drawWideLine(x - 2, cy + 3, x + 4, cy - 4, 1.0f, kGreen);
+      break;
+    case StepState::Fail:
+      s.drawWideLine(x - 4, cy - 4, x + 3, cy + 3, 1.0f, kRed);
+      s.drawWideLine(x + 3, cy - 4, x - 4, cy + 3, 1.0f, kRed);
+      break;
+    case StepState::Wait:
+      for (int i = 0; i < 3; i++)
+        s.fillSmoothCircle(x - 6 + i * 5, cy, 2, i == frame ? kClockColor : kGrey);
+      break;
+    default:
+      s.drawCircle(x - 1, cy, 2, kGrey);
+      break;
+  }
+}
+
+bool sameStep(const SplashStep& a, const SplashStep& b) {
+  return a.state == b.state && !strcmp(a.label, b.label) && !strcmp(a.detail, b.detail);
+}
+
 // ---- Debug page -------------------------------------------------------------
 
 constexpr int kDebugMaxLines = 14;
@@ -239,20 +292,6 @@ void displayBegin() {
 
   gBand.setColorDepth(16);
   if (!gBand.createSprite(kContentW, kBandH)) Serial.println("display: band sprite alloc failed");
-}
-
-void displayMessage(const char* title, const char* detail) {
-  auto& d = M5.Display;
-  d.fillScreen(kBg);
-  d.setTextDatum(textdatum_t::middle_center);
-  d.setFont(&fonts::FreeSansBold12pt7b);
-  d.setTextSize(1);
-  d.setTextColor(kClockColor, kBg);
-  d.drawString(title, kW / 2, kH / 2 - 16);
-  d.setFont(&fonts::Font2);
-  d.setTextColor(kDim, kBg);
-  d.drawString(detail, kW / 2, kH / 2 + 16);
-  gFullRedraw = true;
 }
 
 void displayProgress(const char* title, const char* detail, int percent) {
@@ -286,6 +325,53 @@ void displayProgress(const char* title, const char* detail, int percent) {
 }
 
 void displayInvalidate() { gFullRedraw = true; }
+
+void displaySplash(const SplashModel& m, const char* version) {
+  if (!gBand.getBuffer()) return;
+  bool full = !gSplashShown || gFullRedraw;
+  if (full) {
+    M5.Display.fillScreen(kBg);
+    renderRegion(kSplashHeadY, kSplashHeadH, [&](LGFX_Sprite& s, int oy) {
+      drawLogo(s, kContentW / 2, oy + 36);
+      drawText(s, gTitleFace, "Nightscout Bedside", kContentW / 2, oy + 79, Align::Center, kClockColor);
+      char line[40];
+      snprintf(line, sizeof(line), "v%s  \xC2\xB7  M5Stack Basic", version);
+      drawText(s, gSmallFace, line, kContentW / 2, oy + 104, Align::Center, kGrey);
+    });
+    M5.Display.drawFastHLine(kPadX, kSplashRuleY, kContentW, kDivider);
+  }
+
+  bool listChanged = full;
+  for (int i = 0; i < 4; i++) listChanged |= !sameStep(m.steps[i], gSplashDrawn.steps[i]);
+  for (const SplashStep& st : m.steps)  // animate only while something is waiting
+    if (st.state == StepState::Wait && m.frame != gSplashDrawn.frame) listChanged = true;
+  if (listChanged) {
+    renderRegion(kSplashListY, kSplashListH, [&](LGFX_Sprite& s, int oy) {
+      for (int i = 0; i < 4; i++) {
+        const SplashStep& st = m.steps[i];
+        int cy = oy + i * kSplashRowH + kSplashRowH / 2;
+        drawStepIcon(s, st.state, kSplashIconX, cy, m.frame);
+        drawText(s, gSmallFace, st.label, kSplashLabelX, cy, Align::Left,
+                 st.state == StepState::Todo ? kGrey : kClockColor);
+        uint32_t c = st.state == StepState::Ok ? kGreen : st.state == StepState::Fail ? kRed : kDim;
+        drawText(s, gSmallFace, st.detail, kSplashDetailX, cy, Align::Right, c);
+      }
+    });
+  }
+
+  if (full || strcmp(m.footer, gSplashDrawn.footer) || m.footerAlert != gSplashDrawn.footerAlert) {
+    renderRegion(kSplashFootY, kSplashFootH, [&](LGFX_Sprite& s, int oy) {
+      drawText(s, gSmallFace, m.footer, kContentW / 2, oy + kSplashFootH / 2, Align::Center,
+               m.footerAlert ? kRed : kDim);
+    });
+  }
+
+  gSplashDrawn = m;
+  gSplashShown = true;
+  gFullRedraw = false;
+  gDebugShown = true;  // the next page paints from scratch
+  gProgressShown = false;
+}
 
 void displayUpdate(const ScreenModel& m) {
   if (!gBand.getBuffer()) return;

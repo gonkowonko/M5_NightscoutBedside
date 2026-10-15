@@ -42,6 +42,11 @@ struct Lock {
   ~Lock() { xSemaphoreGive(gLock); }
 };
 
+void setWifiProblem(const char* problem) {
+  Lock lock;
+  strlcpy(gStatus.wifiProblem, problem, sizeof(gStatus.wifiProblem));
+}
+
 void updateWifiStatus() {
   bool connected = WiFi.status() == WL_CONNECTED;
   Lock lock;
@@ -108,14 +113,19 @@ void networkTask(void*) {
       auto st = static_cast<wl_status_t>(gWifi.run(kWifiConnectTimeoutMs));
       if (st == WL_CONNECTED) {
         wasConnected = true;
+        setWifiProblem("");
         logEvent("Wi-Fi: %s %d dBm", WiFi.SSID().c_str(), WiFi.RSSI());
       } else {
-        if (st == WL_NO_SSID_AVAIL)
+        if (st == WL_NO_SSID_AVAIL) {
           logEvent("Wi-Fi: no known network in range");
-        else if (st == WL_CONNECT_FAILED)
+          setWifiProblem("not found");
+        } else if (st == WL_CONNECT_FAILED) {
           logEvent("Wi-Fi: connect failed (password?)");
-        else
+          setWifiProblem("wrong password?");
+        } else {
           logEvent("Wi-Fi: connect timed out (%d)", (int)st);
+          setWifiProblem("can't connect");
+        }
         updateWifiStatus();
         // Nothing in range: back off before scanning again.
         if (sleepUntilWoken(kWifiRetryMs)) fetchedOnce = false;

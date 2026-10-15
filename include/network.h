@@ -12,6 +12,7 @@ struct NetStatus {
   char ssid[33] = "";
   int rssi = 0;
   char ip[16] = "";
+  char wifiProblem[24] = "";       // last failed connect: "not found", ... ("" once connected)
   time_t lastFetchTime = 0;         // epoch seconds of last attempt (0 = never/unknown)
   uint32_t lastFetchMillis = 0;     // millis() of last attempt
   bool everFetched = false;

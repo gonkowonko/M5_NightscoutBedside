@@ -30,6 +30,10 @@ reads the same `M5NS.INI` file, so one SD card works with either firmware.
 *In range, flat · above range (amber), rising · urgent low (red), falling fast · stale data: greyed out and
 struck through, with the age in red.*
 
+**Startup splash:** a checklist that ticks off as the clock starts, with a hint if something's wrong:
+
+![Startup splash: starting up, ready, and a Wi-Fi problem](docs/splash.png)
+
 **Settings page** (on your phone, at `http://m5clock.local`):
 
 <p align="center"><img src="docs/settings.png" width="360" alt="Settings page with Nightscout, glucose range and brightness sections"></p>
@@ -142,7 +146,9 @@ The clock connects to Wi-Fi, sets the time from the internet, and shows your fir
   name doesn't work, press **B** on the clock: the status page shows its IP address.
 - Unplug the USB cable. From now on, updates can go over Wi-Fi.
 
-If something's not right, press **B** for the status page and **B** again for the log. Both are described below.
+While it starts, the **splash** ticks off Settings → Wi-Fi → Time → Nightscout. If a step fails, it shows a red ✗
+and a hint (for example, "Check the Wi-Fi password in M5NS.INI"). It moves on to the clock by itself; any button
+skips it. Later, press **B** for the status page and **B** again for the log. Both are described below.
 
 ## Using it
 
@@ -322,7 +328,7 @@ Regenerating assets (fonts, screen previews and the settings-page screenshot):
 python3 -m venv tools/.venv && tools/.venv/bin/pip install pillow
 tools/.venv/bin/python tools/make_fonts.py     # fonts/*.vlw from the Barlow TTFs (then rebuild)
 tools/.venv/bin/pip install certifi cryptography && tools/.venv/bin/python tools/make_ca_bundle.py   # certs/
-tools/.venv/bin/python tools/preview.py        # docs/preview.png, docs/clock.png
+tools/.venv/bin/python tools/preview.py        # docs/preview.png, docs/clock.png, docs/splash.png
 python3 tools/settings_screenshot.py           # docs/settings.png (needs Google Chrome)
 ```
 

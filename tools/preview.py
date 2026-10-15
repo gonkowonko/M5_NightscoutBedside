@@ -45,7 +45,7 @@ class Vlw:
             ptr += w * h
             if code > 0x20:
                 max_ascent = max(max_ascent, dy)
-        self.digit_h = self.glyphs["0"][3]
+        self.digit_h = self.glyphs["0" if "0" in self.glyphs else "H"][3]
 
     def width(self, text):
         return sum(self.glyphs[c][2] for c in text if c in self.glyphs)
@@ -112,8 +112,47 @@ def screen(f, date, temp, time, bg=None, delta="", trend=None, color=GREEN, stal
     return img
 
 
+# ---- Startup splash (mirrors displaySplash in src/display.cpp) ----
+def splash(f, steps, footer, alert=False, version="1.4.0", frame=0):
+    img = Image.new("RGB", (W, H), "black")
+    d = ImageDraw.Draw(img)
+    s = 4  # supersample the logo for smooth edges
+    m = Image.new("L", (64 * s, 64 * s), 0)
+    md = ImageDraw.Draw(m)
+    md.ellipse([8 * s, 8 * s, 56 * s, 56 * s], fill=255)
+    md.ellipse([(45 - 20) * s, (23 - 20) * s, (45 + 20) * s, (23 + 20) * s], fill=0)
+    m = m.resize((64, 64), Image.LANCZOS)
+    img.paste(Image.new("RGB", (64, 64), CLOCK), (160 - 32, 42 - 32), m)
+    g = Image.new("L", (64 * s, 64 * s), 0)
+    ImageDraw.Draw(g).ellipse([(46 - 5) * s, (40 - 5) * s, (46 + 5) * s, (40 + 5) * s], fill=255)
+    g = g.resize((64, 64), Image.LANCZOS)
+    img.paste(Image.new("RGB", (64, 64), GREEN), (160 - 32, 42 - 32), g)
+    f["title"].draw(img, "Nightscout Bedside", 160, 85, "center", CLOCK)
+    f["text14"].draw(img, f"v{version}  \u00b7  M5Stack Basic", 160, 110, "center", GREY)
+    for i, (state, label, detail) in enumerate(steps):
+        cy = 124 + 9 + i * 19
+        x = PAD_X + 60
+        if state == "ok":
+            d.line([(x - 5, cy), (x - 2, cy + 3), (x + 4, cy - 4)], fill=GREEN, width=2)
+        elif state == "fail":
+            d.line([(x - 4, cy - 4), (x + 3, cy + 3)], fill=RED, width=2)
+            d.line([(x + 3, cy - 4), (x - 4, cy + 3)], fill=RED, width=2)
+        elif state == "wait":
+            for j in range(3):
+                c = CLOCK if j == frame else GREY
+                d.ellipse([x - 6 + j * 5 - 2, cy - 2, x - 6 + j * 5 + 2, cy + 2], fill=c)
+        else:
+            d.ellipse([x - 3, cy - 2, x + 1, cy + 2], outline=GREY)
+        f["text14"].draw(img, label, PAD_X + 70, cy, "left", GREY if state == "todo" else CLOCK)
+        col = GREEN if state == "ok" else RED if state == "fail" else DIM
+        f["text14"].draw(img, detail, PAD_X + 232, cy, "right", col)
+    d.line([(PAD_X, 206), (PAD_X + CONTENT_W - 1, 206)], fill=DIVIDER)
+    f["text14"].draw(img, footer, 160, 224, "center", RED if alert else DIM)
+    return img
+
+
 def main():
-    f = {n: Vlw(os.path.join(FONTS, n + ".vlw")) for n in ("clock", "bg", "delta", "text18", "text14")}
+    f = {n: Vlw(os.path.join(FONTS, n + ".vlw")) for n in ("clock", "bg", "delta", "text18", "text14", "title")}
     shots = [
         screen(f, "Wed 14 Oct", "19.5°C", "23:47", "5.8", "+0.2", "Flat", GREEN, age="2 min ago"),
         screen(f, "Wed 14 Oct", "19.5°C", "03:12", "10.4", "+0.6", "FortyFiveUp", AMBER, age="just now"),
@@ -128,6 +167,21 @@ def main():
     out = os.path.join(ROOT, "docs", "preview.png")
     sheet.save(out)
     print(out)
+    boot = [
+        splash(f, [("ok", "Settings", "M5NS.INI"), ("ok", "Wi-Fi", "MyHomeWiFi \u00b7 -52"),
+                   ("wait", "Time", ""), ("todo", "Nightscout", "")], "Starting up\u2026"),
+        splash(f, [("ok", "Settings", "M5NS.INI"), ("ok", "Wi-Fi", "MyHomeWiFi \u00b7 -52"),
+                   ("ok", "Time", "23:47"), ("ok", "Nightscout", "5.8 mmol/L")],
+               "Settings: m5clock.local \u00b7 192.168.1.50"),
+        splash(f, [("ok", "Settings", "M5NS.INI"), ("fail", "Wi-Fi", "wrong password?"),
+                   ("todo", "Time", ""), ("todo", "Nightscout", "")],
+               "Check the Wi-Fi password in M5NS.INI", alert=True),
+    ]
+    sp = Image.new("RGB", (3 * W + 2 * gap, H), "#444")
+    for i, s in enumerate(boot):
+        sp.paste(s, (i * (W + gap), 0))
+    sp.save(os.path.join(ROOT, "docs", "splash.png"))
+    print(os.path.join(ROOT, "docs", "splash.png"))
     # Single screen at 2x (nearest-neighbour keeps the real pixels crisp).
     hero = os.path.join(ROOT, "docs", "clock.png")
     shots[0].resize((W * 2, H * 2), Image.NEAREST).save(hero)

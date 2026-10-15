@@ -54,8 +54,9 @@ FONTS = {
     "clock": (NUM_TTF, None, "0123456789:-"),
     "bg":    (NUM_TTF, 58, "0123456789.-"),
     "delta": (NUM_TTF, 28, "0123456789.+-" + MINUS),
-    "text18": (TXT_TTF, 18, ASCII + "°…"),
-    "text14": (TXT_TTF, 14, ASCII + "°…"),
+    "title": (NUM_TTF, 30, " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"),
+    "text18": (TXT_TTF, 18, ASCII + "°…·"),
+    "text14": (TXT_TTF, 14, ASCII + "°…·"),
 }
 
 

@@ -450,6 +450,110 @@ void applySettings(const AppConfig& s) {
   displayInvalidate();
 }
 
+// ---- Startup splash -----------------------------------------------------------
+// Shown from power-on until the first reading arrives (plus a moment to see
+// the ticks), for at most 30 s, or until any button is pressed.
+
+constexpr uint32_t kSplashTimeoutMs = 30 * 1000;
+constexpr uint32_t kSplashReadyHoldMs = 2500;
+bool gSplashActive = true;
+uint32_t gSplashReadyAt = 0;
+
+void setStep(SplashStep& s, StepState state, const char* detail = "") {
+  s.state = state;
+  strlcpy(s.detail, detail, sizeof(s.detail));
+}
+
+SplashModel baseSplash() {
+  SplashModel m;
+  const char* labels[] = {"Settings", "Wi-Fi", "Time", "Nightscout"};
+  for (int i = 0; i < 4; i++) strlcpy(m.steps[i].label, labels[i], sizeof(m.steps[i].label));
+  strlcpy(m.footer, "Starting up\xE2\x80\xA6", sizeof(m.footer));
+  return m;
+}
+
+void setFooter(SplashModel& m, const char* text, bool alert) {
+  if (m.footerAlert) return;  // the first problem keeps the footer
+  strlcpy(m.footer, text, sizeof(m.footer));
+  m.footerAlert = alert;
+}
+
+SplashModel buildSplash(uint32_t now) {
+  SplashModel m = baseSplash();
+  m.frame = (now / 350) % 3;
+  NetStatus net;
+  networkStatus(net);
+  NsReading r;
+  networkLatest(r);
+  char buf[40];
+
+  setStep(m.steps[0], StepState::Ok, "M5NS.INI");
+
+  if (gCfg.wifiCount == 0) {
+    setStep(m.steps[1], StepState::Fail, "not set");
+    setFooter(m, "Add your Wi-Fi network to M5NS.INI", true);
+  } else if (net.connected) {
+    char ssid[16];
+    strlcpy(ssid, net.ssid, 13);
+    if (strlen(net.ssid) > 12) strlcat(ssid, "\xE2\x80\xA6", sizeof(ssid));
+    snprintf(buf, sizeof(buf), "%s \xC2\xB7 %d", ssid, net.rssi);
+    setStep(m.steps[1], StepState::Ok, buf);
+  } else if (net.wifiProblem[0]) {
+    setStep(m.steps[1], StepState::Fail, net.wifiProblem);
+    setFooter(m, strstr(net.wifiProblem, "password") ? "Check the Wi-Fi password in M5NS.INI"
+                 : strstr(net.wifiProblem, "found")  ? "Check the Wi-Fi name in M5NS.INI"
+                                                     : "Can't connect to Wi-Fi, retrying",
+              true);
+  } else {
+    setStep(m.steps[1], StepState::Wait);
+  }
+
+  if (timeIsValid()) {
+    time_t t = time(nullptr);
+    tm lt;
+    localtime_r(&t, &lt);
+    formatClock(lt, gCfg.timeFormat == 1, buf, sizeof(buf));
+    setStep(m.steps[2], StepState::Ok, buf);
+  } else if (net.connected) {
+    setStep(m.steps[2], StepState::Wait);
+  }
+
+  if (r.valid) {
+    float v = toDisplayUnits(r.sgv, gCfg);
+    if (gCfg.showMgdl)
+      snprintf(buf, sizeof(buf), "%d mg/dL", r.sgv);
+    else
+      snprintf(buf, sizeof(buf), "%.1f mmol/L", v);
+    setStep(m.steps[3], StepState::Ok, buf);
+  } else if (!gCfg.nightscout[0]) {
+    setStep(m.steps[3], StepState::Fail, "not set");
+    setFooter(m, "Add your Nightscout address to M5NS.INI", true);
+  } else if (net.everFetched && !net.lastFetchOk) {
+    strlcpy(buf, net.lastResult, 22);
+    setStep(m.steps[3], StepState::Fail, buf);
+    setFooter(m, strstr(net.lastResult, "401") ? "Check the Nightscout token in M5NS.INI"
+                                               : "Can't reach Nightscout, retrying",
+              true);
+  } else if (net.connected) {
+    setStep(m.steps[3], StepState::Wait);
+  }
+
+  if (net.connected) {
+    snprintf(buf, sizeof(buf), "Settings: %s.local \xC2\xB7 %s", kMdnsName, net.ip);
+    setFooter(m, buf, false);
+  }
+  return m;
+}
+
+// True once the splash should give way to the clock.
+bool splashFinished(const SplashModel& m, uint32_t now) {
+  bool allOk = true;
+  for (const SplashStep& s : m.steps) allOk &= s.state == StepState::Ok;
+  if (allOk && !gSplashReadyAt) gSplashReadyAt = now;
+  if (gSplashReadyAt && now - gSplashReadyAt >= kSplashReadyHoldMs) return true;
+  return now >= kSplashTimeoutMs;
+}
+
 }  // namespace
 
 void setup() {
@@ -462,13 +566,21 @@ void setup() {
   Serial.printf("\nM5 Bedside Clock %s\n", FW_VERSION);
   logEvent("Boot v%s: %s", FW_VERSION, resetReason());
 
-  displayMessage("Bedside Clock", "Starting...");
+  // Fonts live in flash, so the splash can show before the SD card is read.
+  displayBegin();
+  SplashModel boot = baseSplash();
+  setStep(boot.steps[0], StepState::Wait);
+  displaySplash(boot, FW_VERSION);
   while (!mountSd()) {
-    displayMessage("No SD card", "Insert the card with M5NS.INI");
+    setStep(boot.steps[0], StepState::Fail, "no SD card");
+    setFooter(boot, "Insert the SD card with M5NS.INI", true);
+    displaySplash(boot, FW_VERSION);
     delay(2000);
   }
   while (!loadConfig(kIniPath, gCfg)) {
-    displayMessage("M5NS.INI not found", "Put M5NS.INI in the root of the SD card");
+    setStep(boot.steps[0], StepState::Fail, "M5NS.INI missing");
+    setFooter(boot, "Put M5NS.INI in the root of the SD card", true);
+    displaySplash(boot, FW_VERSION);
     delay(3000);
     SD.end();
     mountSd();
@@ -476,7 +588,6 @@ void setup() {
 
   timeSetup(gCfg.tz);
   loadLevel();
-  displayBegin();
   if (gCfg.wifiCount == 0) logEvent("No Wi-Fi networks in M5NS.INI");
   networkBegin(gCfg);
   webBegin(gCfg, kIniPath, {applySettings, buildScreen});
@@ -490,7 +601,23 @@ void loop() {
   webLoop();
   otaLoop();
   uint32_t now = millis();
-  handleButtons(now);
+  if (gSplashActive) {
+    // Any button skips the splash (and does nothing else).
+    bool pressed = M5.BtnA.wasPressed() || M5.BtnB.wasPressed() || M5.BtnC.wasPressed();
+    SplashModel splash = buildSplash(now);
+    if (pressed || splashFinished(splash, now)) {
+      gSplashActive = false;
+      displayInvalidate();
+    } else {
+      static uint32_t lastSplash = 0;
+      if (now - lastSplash >= 100) {
+        lastSplash = now;
+        displaySplash(splash, FW_VERSION);
+      }
+    }
+  } else {
+    handleButtons(now);
+  }
   sensorUpdate(now);
   applyBrightness(now);
   watchEvents(now);
@@ -499,6 +626,7 @@ void loop() {
   if (now - lastFrame >= kFrameMs) {
     lastFrame = now;
     if (showUpdateProgress(now)) return;
+    if (gSplashActive) return;
     switch (gPage) {
       case Page::Clock: displayUpdate(buildScreen()); break;
       case Page::Status: showStatusPage(now); break;
