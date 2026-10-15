@@ -22,6 +22,7 @@ struct NetStatus {
 
 void networkBegin(const AppConfig& cfg);  // cfg must outlive the task
 void networkRequestRefresh();             // fetch as soon as possible
+void networkWake();                       // run the network loop now (updater work)
 
 // Copies the last good reading. Returns a counter that increments with
 // every successful fetch, so callers can cheaply detect new data.

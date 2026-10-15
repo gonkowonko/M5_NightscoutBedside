@@ -44,7 +44,8 @@ using made-up example data.*
 - **Your colours:** green in range, amber and red at the thresholds you choose, in mmol/L or mg/dL.
 - **Stale warning:** if no new reading arrives for 10 minutes (adjustable), the value greys out and is struck through.
 - **Settings page** in your browser: Nightscout, ranges, brightness, night dimming, time zone, Wi-Fi.
-- **Updates over Wi-Fi** from PlatformIO or by uploading a file on the settings page.
+- **One-click updates:** the clock checks GitHub for new releases every 2 days. Press *Install* on the
+  settings page and it downloads, verifies and installs the new version.
 - **Optional night dimming** between set hours. Any button brings the brightness back for 30 s.
 - **Automatic summer time** (BST/GMT by default) via NTP.
 - **Status and log pages** on the device, showing what went wrong overnight (Wi-Fi drops, Nightscout errors, stale data).
@@ -182,9 +183,19 @@ time, brightness levels, night dimming, 12/24-hour time, date format, time zone,
   firmware, and your comments, are left alone. The previous file is kept as `M5NS.PRV`.
 - There's **no password**. Anyone on your Wi-Fi can open it, the same as the original firmware's page.
 
-## Updating over Wi-Fi
+## Updating
 
-After the first USB flash, no cable is needed:
+**The easy way:** open the settings page. The **Firmware** section shows the installed version. The clock checks
+GitHub for a new release a minute after it starts and every 2 days after that, and you can press **Check for
+updates** at any time. When there's a new version you'll see its release notes and an **Install** button. Press
+it, and the clock downloads, verifies and installs the update, then restarts (about a minute). Nothing is installed
+without you pressing Install. The status page (button B) also shows when an update is available.
+
+Downloads are checked twice: the HTTPS connection to GitHub is verified against an embedded set of trusted root
+certificates, and the file must match the SHA-256 checksum GitHub publishes for it. If either check fails, the
+update is rejected and the clock keeps running its current firmware.
+
+**For developers,** after the first USB flash, no cable is needed:
 
 ```bash
 pio run -e ota -t upload       # build and send to m5clock.local
@@ -268,11 +279,13 @@ src/nightscout.cpp   HTTPS request + JSON parsing                (include/nights
 src/display.cpp      flicker-free clock, status/log/progress screens (include/display.h)
 src/webconfig.cpp    settings page + JSON API                    (include/webconfig.h, webpage.h)
 src/ota.cpp          firmware updates over Wi-Fi                 (include/ota.h)
+src/updater.cpp      GitHub release checks + verified installs   (include/updater.h)
 src/eventlog.cpp     in-memory event log                         (include/eventlog.h)
 src/sensor.cpp       DHT12 over I2C                              (include/sensor.h)
 src/timekeeping.cpp  TZ/NTP and clock/date formatting            (include/timekeeping.h)
 include/glucose.h    units, range classification, trend parsing
-tools/               font generator, previews, release packaging
+tools/               font generator, previews, CA bundle, release packaging
+certs/               root CA bundle for verifying GitHub (tools/make_ca_bundle.py)
 web/                 browser installer page (ESP Web Tools)
 test/host/           host-side test of the INI editor
 ```
@@ -285,6 +298,10 @@ Some design notes:
   `board_build.embed_files` and read straight from flash, so they use no RAM and change with a normal update.
 - **Network** (Wi-Fi, NTP, HTTPS) runs in its own FreeRTOS task, so the clock and buttons never wait on it.
   Wi-Fi power saving is off, because the clock is always on USB power.
+- **Update checks** use a proper HTTPS certificate check (Mozilla roots in `certs/`, embedded in the firmware), unlike
+  the Nightscout fetch, which accepts any certificate so self-hosted sites with home-made certificates still work.
+  The updater runs in the network task, so only one HTTPS connection is open at a time.
+  `FW_REPO` in `include/version.h` sets which repo it checks, so change it in a fork.
 - Sound alarms aren't implemented. They would hook in where `main.cpp` builds the screen model, using
   `classify()` from `glucose.h`.
 
@@ -304,6 +321,7 @@ Regenerating assets (fonts, screen previews and the settings-page screenshot):
 ```bash
 python3 -m venv tools/.venv && tools/.venv/bin/pip install pillow
 tools/.venv/bin/python tools/make_fonts.py     # fonts/*.vlw from the Barlow TTFs (then rebuild)
+tools/.venv/bin/pip install certifi cryptography && tools/.venv/bin/python tools/make_ca_bundle.py   # certs/
 tools/.venv/bin/python tools/preview.py        # docs/preview.png, docs/clock.png
 python3 tools/settings_screenshot.py           # docs/settings.png (needs Google Chrome)
 ```

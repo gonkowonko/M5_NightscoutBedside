@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0 — 2026-10-15
+
+- **Update checks:** the clock checks GitHub for a new release a minute after starting and every 2 days.
+  New versions appear in the Firmware section of the settings page, with release notes and an
+  **Install** button. Nothing installs without you pressing it.
+- Downloads are verified with HTTPS certificate checking (Mozilla's trusted roots, embedded) and the
+  SHA-256 checksum GitHub publishes for the release file. A failed or tampered download is rejected
+  and the clock keeps running its current firmware.
+- Progress shows on the clock during an install, and the status page shows update state.
+- The settings page's file upload is now under "Install from a file".
+
 ## 1.2.0 — 2026-10-15
 
 First public release.

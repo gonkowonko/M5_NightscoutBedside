@@ -6,6 +6,7 @@
 
 #include "eventlog.h"
 #include "timekeeping.h"
+#include "updater.h"
 #include "webconfig.h"
 
 namespace {
@@ -24,6 +25,17 @@ uint32_t gGeneration = 0;
 NetStatus gStatus;
 
 WiFiMulti gWifi;
+
+// Task notification bits.
+constexpr uint32_t kRefreshBit = 1u << 0;  // fetch Nightscout now
+constexpr uint32_t kWakeBit = 1u << 1;     // just run the loop (e.g. updater work)
+
+// Sleeps up to `ms`; returns true if a Nightscout refresh was requested.
+bool sleepUntilWoken(uint32_t ms) {
+  uint32_t bits = 0;
+  xTaskNotifyWait(0, UINT32_MAX, &bits, pdMS_TO_TICKS(ms));
+  return bits & kRefreshBit;
+}
 
 struct Lock {
   Lock() { xSemaphoreTake(gLock, portMAX_DELAY); }
@@ -106,7 +118,7 @@ void networkTask(void*) {
           logEvent("Wi-Fi: connect timed out (%d)", (int)st);
         updateWifiStatus();
         // Nothing in range: back off before scanning again.
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(kWifiRetryMs));
+        if (sleepUntilWoken(kWifiRetryMs)) fetchedOnce = false;
         continue;
       }
     }
@@ -124,10 +136,13 @@ void networkTask(void*) {
         lastFetch = millis();
         fetchedOnce = true;
       }
+      // Update checks/installs share this task, so only one HTTPS
+      // connection is ever open at a time.
+      updaterService();
     }
 
-    // Sleep until the next check, or until a refresh is requested.
-    if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000)) > 0) fetchedOnce = false;
+    // Sleep until the next check, or until something is requested.
+    if (sleepUntilWoken(1000)) fetchedOnce = false;
   }
 }
 
@@ -150,12 +165,17 @@ void networkBegin(const AppConfig& cfg) {
     strlcpy(gStatus.lastResult, "no Wi-Fi in INI", sizeof(gStatus.lastResult));
     return;
   }
-  // TLS needs a generous stack. Core 0 keeps it off the UI loop's core.
-  xTaskCreatePinnedToCore(networkTask, "net", 12 * 1024, nullptr, 1, &gTask, 0);
+  // TLS with certificate checks needs a generous stack. Core 0 keeps it off
+  // the UI loop's core.
+  xTaskCreatePinnedToCore(networkTask, "net", 16 * 1024, nullptr, 1, &gTask, 0);
+}
+
+void networkWake() {
+  if (gTask) xTaskNotify(gTask, kWakeBit, eSetBits);
 }
 
 void networkRequestRefresh() {
-  if (gTask) xTaskNotifyGive(gTask);
+  if (gTask) xTaskNotify(gTask, kRefreshBit, eSetBits);
 }
 
 uint32_t networkLatest(NsReading& out) {

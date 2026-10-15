@@ -5,6 +5,7 @@
 
 #include "eventlog.h"
 #include "ota.h"
+#include "updater.h"
 #include "version.h"
 #include "webpage.h"
 
@@ -207,6 +208,36 @@ void handlePostConfig() {
   sendJson(200, out);
 }
 
+// Updates from GitHub releases (see updater.h).
+void handleUpdateStatus() {
+  UpdateStatus u;
+  updaterStatus(u);
+  JsonDocument doc;
+  doc["current"] = FW_VERSION;
+  doc["build"] = FW_BUILD;
+  doc["repo"] = FW_REPO;
+  doc["checking"] = u.checking;
+  doc["installing"] = u.installing;
+  doc["installed"] = u.installed;
+  doc["available"] = u.available;
+  doc["latest"] = u.latest;
+  doc["notes"] = u.notes;
+  doc["checkedAt"] = (long long)u.checkedAt;
+  doc["progress"] = u.size ? (int)((uint64_t)u.done * 100 / u.size) : 0;
+  doc["error"] = u.error;
+  sendJson(200, doc);
+}
+
+void handleUpdateCheck() {
+  updaterRequestCheck();
+  handleUpdateStatus();
+}
+
+void handleUpdateInstall() {
+  if (!updaterRequestInstall()) return sendError("No update to install right now");
+  handleUpdateStatus();
+}
+
 // Firmware upload (multipart form, field "firmware"). The upload callback
 // streams chunks into the inactive app slot; this one runs afterwards.
 bool gUploadOk = false;
@@ -253,6 +284,9 @@ void webBegin(const AppConfig& current, const char* iniPath, WebHooks hooks) {
   gServer.on("/api/config", HTTP_POST, handlePostConfig);
   gServer.on("/api/status", HTTP_GET, handleStatus);
   gServer.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
+  gServer.on("/api/update", HTTP_GET, handleUpdateStatus);
+  gServer.on("/api/update/check", HTTP_POST, handleUpdateCheck);
+  gServer.on("/api/update/install", HTTP_POST, handleUpdateInstall);
   gServer.onNotFound([] {
     gServer.sendHeader("Location", "/");
     gServer.send(302, "text/plain", "");

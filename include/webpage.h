@@ -41,6 +41,17 @@ input:focus,select:focus{outline:2px solid var(--green);outline-offset:-1px;bord
 .switch input:checked+i::after{transform:translateX(20px);background:#000}
 .switch input:focus-visible+i{outline:2px solid var(--green);outline-offset:2px}
 fieldset{border:0;padding:0;margin:0;min-width:0}
+.fwrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fwrow b{font-size:18px}
+.upd{margin-top:16px;padding:14px;border:1px solid #1f4d33;background:#0b1a12;border-radius:10px}
+.upd #updTitle{color:var(--green);font-weight:600}
+.upd details{margin:8px 0 12px;color:var(--dim);font-size:14px}
+.upd summary,.manual summary{cursor:pointer}
+.upd pre{white-space:pre-wrap;font:inherit;margin:8px 0 0;color:var(--text)}
+button.primary{background:var(--green);color:#000;border:0;font-weight:600;width:100%}
+#updProg{width:100%;margin-top:8px;accent-color:var(--green)}
+.hint.err{color:var(--red)}
+details.manual{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;color:var(--dim);font-size:14px}
 fieldset:disabled{opacity:.4}
 button{font:inherit;border-radius:8px;border:1px solid var(--line);background:#1a1b1e;color:var(--text);
 padding:10px 14px;min-height:44px;cursor:pointer}
@@ -130,12 +141,25 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 </form>
 
 <section><h2>Firmware</h2>
-<p class="hint" style="margin:0 0 12px">Running <b id="ver" style="color:var(--text)"></b>. Upload a new
-<code>firmware.bin</code> (from <code>.pio/build/m5stack-basic/</code>) to update over Wi-Fi.
-The clock checks the file before switching to it, then restarts.</p>
+<div class="fwrow"><div><span class="hint" style="margin:0">Installed</span><br><b id="ver"></b>
+<div class="hint" id="built" style="margin:2px 0 0"></div></div>
+<button type="button" id="checkUpd">Check for updates</button></div>
+<div id="updBox" class="upd" hidden>
+<div id="updTitle"></div>
+<details id="updNotes"><summary>What's new</summary><pre id="notesText"></pre></details>
+<button type="button" id="installUpd" class="primary"></button>
+<progress id="updProg" max="100" value="0" hidden></progress>
+</div>
+<p class="hint" id="updLine" role="status"></p>
+<p class="hint">The clock checks for new releases every 2 days. Updates are only installed when you press
+Install. They're downloaded from <a id="repoLink" target="_blank" rel="noopener">GitHub</a> and verified before the
+clock switches over.</p>
+<details class="manual"><summary>Install from a file</summary>
+<p class="hint">For a <code>…-ota.bin</code> from a release, or <code>firmware.bin</code> from your own build.</p>
 <input id="fw" type="file" accept=".bin,application/octet-stream">
 <button type="button" id="upload" style="margin-top:12px;width:100%">Upload and install</button>
 <progress id="fwp" max="100" value="0" style="width:100%;margin-top:12px;display:none;accent-color:var(--green)"></progress>
+</details>
 </section>
 </main>
 <div id="bar"><div><span id="msg"></span><button id="save" type="button">Save</button></div></div>
@@ -168,7 +192,6 @@ async function load(){
   $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
   $('tz').value=cfg.tz;syncTz();
-  $('ver').textContent='v'+cfg.version+' ('+cfg.build+')';
   const w=cfg.wifi[0]||{ssid:'',hasPass:false};
   $('ssid').value=w.ssid;$('wpass').value='';$('wpass').placeholder=w.hasPass?'Password unchanged':'Password';
 }
@@ -224,6 +247,44 @@ $('upload').onclick=()=>{
   x.onerror=()=>{msg('Upload failed: clock not reachable','err');$('upload').disabled=$('save').disabled=false};
   x.open('POST','/update');x.send(fd);
 };
+
+// ---- Updates from GitHub ----
+let upd=null,updTimer=null;
+function when(t){return new Date(t*1000).toLocaleString([],{weekday:'short',hour:'2-digit',minute:'2-digit'})}
+function renderUpd(){
+  $('ver').textContent='v'+upd.current;$('built').textContent='Built '+upd.build;
+  $('repoLink').href='https://github.com/'+upd.repo+'/releases';
+  const busy=upd.checking||upd.installing||upd.installed;
+  $('checkUpd').disabled=busy;$('checkUpd').textContent=upd.checking?'Checking…':'Check for updates';
+  let line='',err=false;
+  if(upd.installed)line='Installed v'+upd.latest+'. Restarting the clock…';
+  else if(upd.installing)line='Downloading and installing… '+upd.progress+'%. Keep the clock plugged in.';
+  else if(upd.checking)line='Checking GitHub for a new release…';
+  else if(upd.error){line='Update problem: '+upd.error;err=true}
+  else if(!upd.available)line=upd.checkedAt?'Up to date · checked '+when(upd.checkedAt):'Not checked yet';
+  $('updLine').textContent=line;$('updLine').className='hint'+(err?' err':'');
+  const show=upd.available||upd.installing||upd.installed;
+  $('updBox').hidden=!show;
+  if(show){
+    $('updTitle').textContent='Version '+upd.latest+' is available';
+    $('notesText').textContent=upd.notes.replace(/\*\*/g,'').trim();
+    $('updNotes').hidden=!upd.notes.trim();
+    $('installUpd').hidden=upd.installing||upd.installed;$('installUpd').textContent='Install v'+upd.latest;
+    $('updProg').hidden=!(upd.installing||upd.installed);$('updProg').value=upd.installed?100:upd.progress;
+  }
+  clearTimeout(updTimer);
+  if(upd.installed)updTimer=setTimeout(()=>location.reload(),20000);
+  else if(busy)updTimer=setTimeout(loadUpd,1000);
+}
+async function loadUpd(){try{upd=await (await fetch('/api/update')).json();renderUpd()}catch(e){updTimer=setTimeout(loadUpd,3000)}}
+$('checkUpd').onclick=async()=>{upd=await (await fetch('/api/update/check',{method:'POST'})).json();renderUpd()};
+$('installUpd').onclick=async()=>{
+  if(!confirm('Install version '+upd.latest+'? The clock restarts when it\'s done.'))return;
+  const r=await fetch('/api/update/install',{method:'POST'});const j=await r.json();
+  if(!r.ok){msg(j.error||'Could not start the update','err');return}
+  upd=j;renderUpd();
+};
+loadUpd();
 
 load().catch(()=>msg('Could not load settings','err'));
 status();setInterval(status,10000);

@@ -6,6 +6,7 @@
 
 #include "display.h"
 #include "eventlog.h"
+#include "updater.h"
 #include "webconfig.h"
 
 namespace {
@@ -62,6 +63,10 @@ void otaLoop() {
 
 bool otaWebStart(size_t expectedSize) {
   gError[0] = 0;
+  if (updaterBusy() || Update.isRunning()) {
+    strlcpy(gError, "another update is already running", sizeof(gError));
+    return false;
+  }
   gExpected = expectedSize;
   gWritten = 0;
   logEvent("Update started (web)");

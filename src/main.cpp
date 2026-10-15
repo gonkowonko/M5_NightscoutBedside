@@ -26,6 +26,7 @@
 #include "network.h"
 #include "sensor.h"
 #include "timekeeping.h"
+#include "updater.h"
 #include "ota.h"
 #include "version.h"
 #include "webconfig.h"
@@ -182,6 +183,32 @@ ScreenModel buildModel() {
   return m;
 }
 
+// An update from GitHub is being installed: show progress instead of the
+// normal page, and restart once it's verified. Returns true while it owns the screen.
+bool showUpdateProgress(uint32_t now) {
+  static uint32_t installedAt = 0;
+  static bool showing = false;
+  UpdateStatus u;
+  updaterStatus(u);
+  if (!u.installing && !u.installed) {
+    if (showing) displayInvalidate();  // install failed: repaint the current page
+    showing = false;
+    return false;
+  }
+  showing = true;
+  char detail[48];
+  if (u.installed) {
+    if (!installedAt) installedAt = now;
+    displayProgress("Update installed", "Restarting...", 100);
+    if (now - installedAt > 2000) ESP.restart();
+    return true;
+  }
+  int pct = u.size ? (int)((uint64_t)u.done * 100 / u.size) : 0;
+  snprintf(detail, sizeof(detail), "v%s  -  %d%%  -  don't unplug", u.latest, pct);
+  displayProgress("Updating firmware", detail, pct);
+  return true;
+}
+
 // ---- Manual refresh (button C) ----------------------------------------------
 // The age line shows "Refreshing…" until the network task finishes a fetch,
 // then "Refresh failed" in red for a few seconds if it didn't work.
@@ -285,6 +312,21 @@ void showStatusPage(uint32_t now) {
     line("Sensor: DHT12 not found");
   line("Heap: %u free, %u min, %u max block", ESP.getFreeHeap(), ESP.getMinFreeHeap(),
        ESP.getMaxAllocHeap());
+  UpdateStatus upd;
+  updaterStatus(upd);
+  if (upd.installing)
+    line("Update: installing v%s", upd.latest);
+  else if (upd.available)
+    line("Update: v%s available (settings page)", upd.latest);
+  else if (upd.error[0])
+    line("Update: %s", upd.error);
+  else if (upd.checkedAt) {
+    tm ct;
+    localtime_r(&upd.checkedAt, &ct);
+    line("Update: up to date (checked %02d:%02d)", ct.tm_hour, ct.tm_min);
+  } else {
+    line("Update: not checked yet");
+  }
   uint32_t up = now / 1000;
   line("Uptime: %lud %02luh %02lum", (unsigned long)(up / 86400), (unsigned long)(up / 3600 % 24),
        (unsigned long)(up / 60 % 60));
@@ -456,6 +498,7 @@ void loop() {
   static uint32_t lastFrame = 0;
   if (now - lastFrame >= kFrameMs) {
     lastFrame = now;
+    if (showUpdateProgress(now)) return;
     switch (gPage) {
       case Page::Clock: displayUpdate(buildScreen()); break;
       case Page::Status: showStatusPage(now); break;
