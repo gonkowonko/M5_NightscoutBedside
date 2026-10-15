@@ -1,5 +1,5 @@
 // M5 Bedside Clock - a Nightscout bedside clock for the original M5Stack Basic.
-// Licensed under the GNU GPL v3 (see LICENSE).
+// Copyright (C) 2026 Gary Dalley. Licensed under the GNU GPL v3 (see LICENSE).
 //
 // Wiring of the modules:
 //   config      - reads M5NS.INI from the SD card

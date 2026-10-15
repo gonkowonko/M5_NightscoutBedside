@@ -302,4 +302,4 @@ clang++ -std=c++17 -I test/host -I include test/host/test_initext.cpp -o /tmp/in
 - Built on [M5Unified](https://github.com/m5stack/M5Unified), [M5GFX](https://github.com/m5stack/M5GFX) and
   [ArduinoJson](https://arduinojson.org/).
 
-Licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
+Copyright (C) 2026 Gary Dalley. Licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
