@@ -51,6 +51,7 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 button.primary{background:var(--green);color:#000;border:0;font-weight:600;width:100%}
 #updProg{width:100%;margin-top:8px;accent-color:var(--green)}
 .hint.err{color:var(--red)}
+a{color:var(--green)}
 details.manual{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;color:var(--dim);font-size:14px}
 fieldset:disabled{opacity:.4}
 button{font:inherit;border-radius:8px;border:1px solid var(--line);background:#1a1b1e;color:var(--text);
