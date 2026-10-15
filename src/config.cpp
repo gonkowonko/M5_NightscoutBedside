@@ -3,6 +3,7 @@
 #include <SD.h>
 
 #include "IniFile.h"
+#include "eventlog.h"
 #include "initext.h"
 
 namespace {
@@ -92,16 +93,26 @@ bool loadConfig(const char* path, AppConfig& cfg) {
   r.number("red_low", cfg.redLow);
   r.number("red_high", cfg.redHigh);
 
-  // Time zone: tz (POSIX) wins; otherwise the legacy fixed offsets in seconds.
+  // Time zone: tz (POSIX) wins. Without it, M5_NightscoutMon's time_zone/dst
+  // offsets are used. That firmware had no automatic summer time (users
+  // changed dst by hand), so time_zone picks the matching European rule and
+  // dst is ignored. Other offsets stay fixed.
   if (!r.str("config", "tz", cfg.tz, sizeof(cfg.tz)) || cfg.tz[0] == 0) {
     int zone = 0, dst = 0;
     bool hasZone = r.integer("time_zone", zone);
     bool hasDst = r.integer("dst", dst);
-    if (hasZone || hasDst) {
+    if (hasZone && zone == 0) {
+      strlcpy(cfg.tz, kDefaultTz, sizeof(cfg.tz));
+    } else if (hasZone && zone == 3600) {
+      strlcpy(cfg.tz, "CET-1CEST,M3.5.0,M10.5.0/3", sizeof(cfg.tz));
+    } else if (hasZone && zone == 7200) {
+      strlcpy(cfg.tz, "EET-2EEST,M3.5.0/3,M10.5.0/4", sizeof(cfg.tz));
+    } else if (hasZone || hasDst) {
       // POSIX offsets are west-positive, so the sign is inverted.
       int total = zone + dst;
       int mins = abs(total) / 60;
       snprintf(cfg.tz, sizeof(cfg.tz), "UTC%c%d:%02d", total > 0 ? '-' : '+', mins / 60, mins % 60);
+      logEvent("Fixed time zone: set it in settings");
     } else {
       strlcpy(cfg.tz, kDefaultTz, sizeof(cfg.tz));
     }

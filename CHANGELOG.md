@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1 — 2026-10-15
+
+- Old M5_NightscoutMon settings files without a `tz` line now get automatic summer time:
+  `time_zone` 0, 3600 or 7200 selects the UK, Central European or Eastern European rule, and the
+  hand-set `dst` value is ignored. Previously `time_zone + dst` became a fixed offset, so a UK
+  clock set up for BST was an hour fast all winter. Other offsets stay fixed, and the log says to
+  set the time zone on the settings page.
+
 ## 1.4.0 — 2026-10-15
 
 - **Startup splash:** a moon logo, the version, and a live checklist (Settings → Wi-Fi → Time →

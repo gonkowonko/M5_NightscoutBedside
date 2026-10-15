@@ -103,8 +103,9 @@ Comments (`;` or `#`) must be on their own line. Anything after a value counts a
 
 The other settings have sensible defaults, and you can change them all later from the settings page.
 
-> If you already run M5_NightscoutMon, keep your existing `M5NS.INI`, optionally adding a
-> `tz = …` line (see [Configuration](#configuration)).
+> If you already run M5_NightscoutMon, keep your existing `M5NS.INI`. In the UK and most of
+> Europe, summer time then switches automatically. Elsewhere, set your time zone on the settings
+> page (see [Configuration](#configuration)).
 
 Put the card in the M5Stack.
 
@@ -228,7 +229,7 @@ Read from the original M5_NightscoutMon format:
 | `brightness1/2/3` | The three brightness levels for button A, in % |
 | `time_format` | `0` = 24 h, `1` = 12 h (no AM/PM) |
 | `date_format` | `0` = `Wed 14 Oct`, `1` = `Wed Oct 14` |
-| `time_zone`, `dst` | Fixed offsets in seconds, used only if `tz` isn't set |
+| `time_zone`, `dst` | M5_NightscoutMon's offsets in seconds, used only if `tz` isn't set. `time_zone` 0, 3600 or 7200 becomes the UK, Central or Eastern European rule with automatic summer time (`dst` is ignored). Other values are a fixed offset. |
 | `[wlan1]` … `[wlan9]` `ssid`, `pass` | Wi-Fi networks (the settings page manages one) |
 
 New in this firmware (ignored by the original):
