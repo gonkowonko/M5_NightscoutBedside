@@ -15,6 +15,9 @@ card out or plug in a cable again.
 > This is a hobby project and **not a medical device**. Readings can be delayed, missing or wrong. Never use it
 > to make treatment decisions, and don't rely on it in place of your CGM app's alerts. It has no sound alarms.
 
+**[Install it from your browser →](https://gonkowonko.github.io/M5_NightscoutBedside/)** No tools needed, just
+Chrome or Edge and a USB cable. Firmware files are on the [releases page](https://github.com/gonkowonko/M5_NightscoutBedside/releases).
+
 It's a clean rewrite inspired by [mlukasek/M5_NightscoutMon](https://github.com/mlukasek/M5_NightscoutMon) and
 reads the same `M5NS.INI` file, so one SD card works with either firmware.
 
@@ -56,9 +59,15 @@ using made-up example data.*
 | **microSD card** | Any size, formatted FAT32. Holds the settings file. |
 | **USB-A to USB-C cable** | Needed once, for the first flash. **A USB-C to USB-C cable won't work** with the original Basic: its port lacks the resistors that USB-C chargers and computers look for. On a USB-C-only Mac, use a USB-A adapter or hub. |
 | A **Nightscout** site | Its address and, if it's locked down, an access token with the `readable` role. |
-| A computer with **[PlatformIO](https://platformio.org/)** | `brew install platformio` on macOS, or the VS Code extension. |
+| **Chrome or Edge** on a computer, *or* **[PlatformIO](https://platformio.org/)** | Chrome or Edge for the browser installer. PlatformIO (`brew install platformio`, or the VS Code extension) to build it yourself. |
 
 ## Setup
+
+**The quick way:** prepare the SD card (step 2), then use the
+**[browser installer](https://gonkowonko.github.io/M5_NightscoutBedside/)** in Chrome or Edge. Skip the rest of
+this section.
+
+**Building it yourself** with PlatformIO:
 
 ### 1. Get the code
 
@@ -181,7 +190,9 @@ After the first USB flash, no cable is needed:
 pio run -e ota -t upload       # build and send to m5clock.local
 ```
 
-You can also upload `.pio/build/m5stack-basic/firmware.bin` in the **Firmware** section of the settings page.
+You can also upload a firmware file in the **Firmware** section of the settings page: the `…-ota.bin` from a
+[release](https://github.com/gonkowonko/M5_NightscoutBedside/releases), or `.pio/build/m5stack-basic/firmware.bin`
+from your own build.
 
 Either way the clock shows a progress bar, checks the new firmware, and only then restarts into it. A failed upload or
 a wrong file leaves the current firmware running. The flash is split into two 1.9 MB app slots for this, so
@@ -261,7 +272,8 @@ src/eventlog.cpp     in-memory event log                         (include/eventl
 src/sensor.cpp       DHT12 over I2C                              (include/sensor.h)
 src/timekeeping.cpp  TZ/NTP and clock/date formatting            (include/timekeeping.h)
 include/glucose.h    units, range classification, trend parsing
-tools/               font generator, screen preview, settings screenshot
+tools/               font generator, previews, release packaging
+web/                 browser installer page (ESP Web Tools)
 test/host/           host-side test of the INI editor
 ```
 
@@ -275,6 +287,17 @@ Some design notes:
   Wi-Fi power saving is off, because the clock is always on USB power.
 - Sound alarms aren't implemented. They would hook in where `main.cpp` builds the screen model, using
   `classify()` from `glucose.h`.
+
+**Releases** are built by GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)). To
+publish one, bump `FW_VERSION` in `include/version.h`, add a section to [`CHANGELOG.md`](CHANGELOG.md), commit,
+then push a matching tag:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+The workflow builds the firmware, packages it with `tools/package_release.sh` (combined full image, OTA image,
+example INI), creates the GitHub release, and redeploys the browser installer (`web/index.html`) to GitHub Pages.
 
 Regenerating assets (fonts, screen previews and the settings-page screenshot):
 

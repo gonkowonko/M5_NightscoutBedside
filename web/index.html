@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install M5_NightscoutBedside</title>
+<meta name="description" content="Install the M5_NightscoutBedside bedside clock firmware on an M5Stack Basic from your browser.">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<style>
+:root{--bg:#000;--card:#111214;--line:#26272b;--text:#F3F4F6;--dim:#9CA3AF;--faint:#6B7280;
+--green:#4ADE80;--amber:#FBBF24;--red:#F87171;
+--esp-tools-button-color:#4ADE80;--esp-tools-button-text-color:#000;--esp-tools-button-border-radius:10px;
+--mdc-theme-primary:#4ADE80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:28px;margin:0 0 4px;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--dim);margin:0 0 24px}
+.hero{display:block;width:100%;max-width:480px;margin:0 auto 28px;border-radius:14px;border:1px solid var(--line)}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0 0 12px;font-weight:600}
+ol,ul{margin:0;padding-left:22px}li{margin:6px 0}
+a{color:var(--green)}code{background:#1a1b1e;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.92em}
+.warn{border-color:#5b2626;background:#1a0f0f}.warn h2{color:var(--red)}
+.install{text-align:center;padding:28px 20px}
+.install p{color:var(--dim);margin:14px 0 0;font-size:14px}
+esp-web-install-button button{font:inherit;font-weight:600;font-size:18px;background:var(--green);color:#000;border:0;
+border-radius:10px;padding:14px 32px;cursor:pointer;min-height:48px}
+.note{color:var(--dim);font-size:14px}
+footer{color:var(--faint);font-size:13px;text-align:center;margin-top:28px}
+</style>
+</head>
+<body><main>
+<h1>M5_NightscoutBedside</h1>
+<p class="sub">A calm bedside clock with your Nightscout glucose, for the original M5Stack Basic. Version {{VERSION}}.</p>
+<img class="hero" src="clock.png" width="640" height="480" alt="The clock screen: date and temperature, a large 23:47, and 5.8 with a flat arrow, +0.2 and 2 min ago">
+
+<section class="warn"><h2>Not a medical device</h2>
+<p style="margin:0">This is a hobby project. Readings can be delayed, missing or wrong. Never use it to make treatment
+decisions, and don't rely on it in place of your CGM app's alerts. It has no sound alarms.</p></section>
+
+<section><h2>You'll need</h2>
+<ul>
+<li>An original <b>M5Stack Basic Core</b>. The BTC Standing Base is optional; it adds a room temperature sensor.</li>
+<li><b>Chrome or Edge on a computer</b>. Browser flashing doesn't work in Safari, Firefox or on phones.</li>
+<li>A <b>USB-A to USB-C</b> data cable. USB-C to USB-C cables don't work with the original Basic.
+On a USB-C-only Mac, use a USB-A adapter.</li>
+<li>A <b>microSD card</b> (FAT32) for the settings file.</li>
+</ul></section>
+
+<section><h2>1 · Prepare the SD card</h2>
+<ol>
+<li>Download the example <a href="M5NS.INI" download>M5NS.INI</a>.</li>
+<li>Open it in a text editor and fill in your Nightscout address and token, your Wi-Fi name and password,
+and <code>show_mgdl</code> (<code>0</code> = mmol/L, <code>1</code> = mg/dL).</li>
+<li>Copy it to the root of the card and put the card in the M5Stack.</li>
+</ol>
+<p class="note" style="margin:12px 0 0">Coming from M5_NightscoutMon? Keep your existing card. It works as it is.</p>
+</section>
+
+<section><h2>2 · Install</h2>
+<p class="note" style="margin:0 0 4px">Installing replaces the firmware on the M5Stack. To keep a copy of what's on it now, see
+<a href="https://github.com/gonkowonko/M5_NightscoutBedside#3-back-up-the-current-firmware-optional-recommended">backing up</a> first.</p>
+<div class="install">
+<esp-web-install-button manifest="manifest.json">
+<button slot="activate">Connect &amp; install</button>
+<span slot="unsupported">Your browser can't flash devices. Use <b>Chrome</b> or <b>Edge</b> on a computer.</span>
+<span slot="not-allowed">Browser flashing needs a secure (https) page.</span>
+</esp-web-install-button>
+<p>Plug the M5Stack in, press the button and pick the port that appears, usually <code>CP2104</code> or
+<code>usbserial</code>. If no port shows up, try another cable or install the
+<a href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers">CP210x driver</a>.</p>
+</div></section>
+
+<section><h2>3 · After installing</h2>
+<ul>
+<li>The clock connects to Wi-Fi, sets the time and shows your first reading in about 20 seconds.</li>
+<li>Open <b>http://m5clock.local</b> on your phone to change settings. Button B shows the IP address if that name doesn't work.</li>
+<li>Later updates install over Wi-Fi from the settings page, with no cable needed.</li>
+<li>Buttons: <b>A</b> brightness, <b>B</b> status and log pages, <b>C</b> refresh now.</li>
+</ul></section>
+
+<footer>
+<a href="https://github.com/gonkowonko/M5_NightscoutBedside">Source on GitHub</a> ·
+<a href="https://github.com/gonkowonko/M5_NightscoutBedside/releases">Releases</a> ·
+GPL-3.0 · Flashing by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>
+</footer>
+</main></body>
+</html>

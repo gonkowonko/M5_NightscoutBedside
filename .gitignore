@@ -6,3 +6,5 @@ __pycache__/
 
 # flash backups (contain Wi-Fi passwords and tokens)
 *-backup.bin
+dist/
+site/
