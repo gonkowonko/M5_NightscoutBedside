@@ -6,14 +6,14 @@
 
 static const char kSettingsPage[] PROGMEM = R"HTML(<!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Bedside Clock</title>
 <style>
 :root{--bg:#000;--card:#111214;--line:#26272b;--text:#F3F4F6;--dim:#9CA3AF;--faint:#6B7280;
 --green:#4ADE80;--amber:#FBBF24;--red:#F87171}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
-main{max-width:560px;margin:0 auto;padding:16px 16px 96px}
+main{max-width:560px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:8px 0 20px}
 h1{font-size:22px;margin:0;font-weight:600}
 #now{color:var(--dim);font-size:15px;text-align:right}
@@ -61,7 +61,7 @@ details.manual{margin-top:16px;border-top:1px solid var(--line);padding-top:12px
 fieldset:disabled{opacity:.4}
 button{font:inherit;border-radius:8px;border:1px solid var(--line);background:#1a1b1e;color:var(--text);
 padding:10px 14px;min-height:44px;cursor:pointer}
-#bar{position:fixed;left:0;right:0;bottom:0;background:rgba(0,0,0,.92);border-top:1px solid var(--line);padding:12px 16px}
+#bar{position:fixed;left:0;right:0;bottom:0;background:rgba(0,0,0,.92);border-top:1px solid var(--line);padding:12px max(20px,env(safe-area-inset-right)) calc(12px + max(8px,env(safe-area-inset-bottom))) max(20px,env(safe-area-inset-left))}
 #bar div{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
 #save{background:var(--green);color:#000;border:0;font-weight:600;flex:none;padding:10px 24px}
 #save:disabled{opacity:.5}

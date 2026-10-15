@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 — 2026-10-15
+
+- Settings page: the Save bar stays clear of the iPhone's rounded corners, home bar and Safari's toolbar
+  (safe-area padding), so the Save button is never clipped.
+
 ## 1.3.1 — 2026-10-15
 
 - Settings page works properly on phones:
