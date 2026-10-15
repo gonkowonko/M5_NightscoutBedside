@@ -21,9 +21,14 @@ h1{font-size:22px;margin:0;font-weight:600}
 section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
 h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0 0 12px;font-weight:600}
 label{display:block;margin:12px 0 4px;color:var(--dim);font-size:14px}
-label:first-of-type{margin-top:0}
+h2+label{margin-top:0}
 input,select{width:100%;background:#000;color:var(--text);border:1px solid var(--line);border-radius:8px;
 padding:10px 12px;font:inherit;min-height:44px}
+input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;display:block;text-align:left}
+input[type=time]::-webkit-date-and-time-value{text-align:left}
+input[type=time]::-webkit-calendar-picker-indicator{display:none}
+input[type=time]{padding-left:10px;padding-right:6px}
+input,select{min-width:0}
 input:focus,select:focus{outline:2px solid var(--green);outline-offset:-1px;border-color:transparent}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -32,7 +37,7 @@ input:focus,select:focus{outline:2px solid var(--green);outline-offset:-1px;bord
 .check{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--dim);font-size:14px}
 .check input{width:auto;min-height:0}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
-.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 4px;cursor:pointer;color:var(--text);font-size:16px}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:20px 0 4px;cursor:pointer;color:var(--text);font-size:16px}
 .switch b{font-weight:500}
 .switch input{position:absolute;opacity:0;width:1px;height:1px;min-height:0}
 .switch i{flex:none;width:48px;height:28px;border-radius:14px;background:#2a2b2f;position:relative;transition:background .15s}
@@ -62,7 +67,12 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 #save:disabled{opacity:.5}
 #msg{color:var(--dim);font-size:14px;flex:1}
 #msg.err{color:var(--red)}#msg.ok{color:var(--green)}
-@media (max-width:420px){.row3{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){
+  .row3{gap:8px}
+  #wifiRow{grid-template-columns:1fr}
+  .fwrow{flex-direction:column;align-items:stretch}
+  .fwrow button{width:100%}
+}
 </style></head><body><main>
 <header><h1>Bedside Clock</h1><div id="now">&nbsp;</div></header>
 
@@ -91,7 +101,7 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 </section>
 
 <section><h2>Brightness</h2>
-<p class="hint" style="margin:0 0 4px">Button A cycles these three levels. The clock remembers the one you pick.</p>
+<p class="hint" style="margin:0">Button A cycles these three levels. The clock remembers the one you pick.</p>
 <div class="row3">
 <div><label for="b1">Level 1 %</label><input id="b1" type="number" min="1" max="100" inputmode="numeric"></div>
 <div><label for="b2">Level 2 %</label><input id="b2" type="number" min="1" max="100" inputmode="numeric"></div>
@@ -133,7 +143,7 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 </section>
 
 <section><h2>Wi-Fi</h2>
-<div class="row">
+<div class="row" id="wifiRow">
 <div><label for="ssid">Network name</label><input id="ssid" spellcheck="false" autocapitalize="off"></div>
 <div><label for="wpass">Password</label><input id="wpass" type="password"></div>
 </div>

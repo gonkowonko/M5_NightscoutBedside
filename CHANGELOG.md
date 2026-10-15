@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.1 — 2026-10-15
+
+- Settings page works properly on phones:
+  - Brightness levels and night times sit three across instead of wrapping.
+  - Time fields no longer overflow on iPhone.
+  - Wi-Fi name and password are stacked.
+  - The Firmware section's button is full width.
+  - Spacing is fixed above "Dim at night" and "Time zone".
+  - Links are green.
+- Browser installer: the clock image is no longer stretched on phones.
+
 ## 1.3.0 — 2026-10-15
 
 - **Update checks:** the clock checks GitHub for a new release a minute after starting and every 2 days.
