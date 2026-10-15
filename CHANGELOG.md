@@ -7,8 +7,7 @@
   "Check the Wi-Fi password in M5NS.INI". The splash switches to the clock 2.5 s after the first
   reading, or after 30 s, or when you press any button.
 - Missing SD card or `M5NS.INI` now shows on the splash instead of as a plain message.
-- The time is set from the Nightscout server's clock if that arrives before NTP (NTP still refines it),
-  so the clock and splash get the time sooner after a restart. The log notes which source set it.
+- The log notes when NTP first sets the time ("Time synced (NTP)").
 - The splash shows just the Wi-Fi network name (signal strength is on the status page).
 
 ## 1.3.2 — 2026-10-15
