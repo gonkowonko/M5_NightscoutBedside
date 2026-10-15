@@ -33,7 +33,7 @@ enum class StepState : uint8_t { Todo, Wait, Ok, Fail };
 struct SplashStep {
   StepState state = StepState::Todo;
   char label[12] = "";
-  char detail[28] = "";  // right-aligned, e.g. "MyWiFi · -52"
+  char detail[28] = "";  // right-aligned, e.g. "MyHomeWiFi"
 };
 
 struct SplashModel {

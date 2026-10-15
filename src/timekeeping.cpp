@@ -1,6 +1,10 @@
 #include "timekeeping.h"
 
 #include <Arduino.h>
+#include <esp_sntp.h>
+#include <sys/time.h>
+
+#include "eventlog.h"
 
 namespace {
 char gTz[64] = "UTC0";
@@ -16,6 +20,33 @@ void timeSetup(const char* posixTz) {
 
 void timeStartSync() {
   configTzTime(gTz, "pool.ntp.org", "time.google.com", "time.cloudflare.com");
+  sntp_set_time_sync_notification_cb([](struct timeval*) {
+    static bool logged = false;  // NTP re-syncs hourly; only note the first
+    if (!logged) logEvent("Time synced (NTP)");
+    logged = true;
+  });
+}
+
+void timeSeedFromHttpDate(const char* date) {
+  if (timeIsValid() || !date || !*date) return;
+  static const char kMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+  char mon[4] = "";
+  int d, y, h, mi, s;
+  if (sscanf(date, "%*3s, %d %3s %d %d:%d:%d", &d, mon, &y, &h, &mi, &s) != 6) return;
+  const char* p = strstr(kMonths, mon);
+  if (!p || strlen(mon) != 3) return;
+  int m = (p - kMonths) / 3 + 1;
+  // Days since 1970-01-01 for a Gregorian date (Howard Hinnant's algorithm).
+  y -= m <= 2;
+  int era = y / 400;
+  int yoe = y - era * 400;
+  int doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+  int doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  long days = era * 146097L + doe - 719468;
+  timeval tv = {(time_t)(days * 86400L + h * 3600L + mi * 60L + s), 0};
+  if (tv.tv_sec < kMinValidEpoch) return;
+  settimeofday(&tv, nullptr);
+  logEvent("Time set from server (NTP pending)");
 }
 
 bool timeIsValid() { return time(nullptr) > kMinValidEpoch; }

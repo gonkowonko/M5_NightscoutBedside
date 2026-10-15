@@ -4,6 +4,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#include "timekeeping.h"
+
 namespace {
 
 // "cgm.example.com", "https://cgm.example.com/" -> "https://cgm.example.com"
@@ -41,7 +43,10 @@ bool nightscoutFetch(const AppConfig& cfg, NsReading& out, char* status, size_t 
   }
   http.addHeader("Accept", "application/json");
 
+  const char* headers[] = {"Date"};
+  http.collectHeaders(headers, 1);
   int code = http.GET();
+  if (code > 0) timeSeedFromHttpDate(http.header("Date").c_str());
   if (code != HTTP_CODE_OK) {
     if (code < 0)
       snprintf(status, statusLen, "error: %s", HTTPClient::errorToString(code).c_str());

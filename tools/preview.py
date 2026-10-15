@@ -168,9 +168,9 @@ def main():
     sheet.save(out)
     print(out)
     boot = [
-        splash(f, [("ok", "Settings", "M5NS.INI"), ("ok", "Wi-Fi", "MyHomeWiFi \u00b7 -52"),
+        splash(f, [("ok", "Settings", "M5NS.INI"), ("ok", "Wi-Fi", "MyHomeWiFi"),
                    ("wait", "Time", ""), ("todo", "Nightscout", "")], "Starting up\u2026"),
-        splash(f, [("ok", "Settings", "M5NS.INI"), ("ok", "Wi-Fi", "MyHomeWiFi \u00b7 -52"),
+        splash(f, [("ok", "Settings", "M5NS.INI"), ("ok", "Wi-Fi", "MyHomeWiFi"),
                    ("ok", "Time", "23:47"), ("ok", "Nightscout", "5.8 mmol/L")],
                "Settings: m5clock.local \u00b7 192.168.1.50"),
         splash(f, [("ok", "Settings", "M5NS.INI"), ("fail", "Wi-Fi", "wrong password?"),

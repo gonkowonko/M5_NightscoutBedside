@@ -402,7 +402,6 @@ void watchEvents(uint32_t now) {
   if (now - lastCheck < 1000) return;
   lastCheck = now;
 
-  if (timeIsValid() && !timeWasValid) logEvent("Time synced (NTP)");
   timeWasValid = timeIsValid();
   if (!timeWasValid) return;
 
@@ -493,10 +492,8 @@ SplashModel buildSplash(uint32_t now) {
     setStep(m.steps[1], StepState::Fail, "not set");
     setFooter(m, "Add your Wi-Fi network to M5NS.INI", true);
   } else if (net.connected) {
-    char ssid[16];
-    strlcpy(ssid, net.ssid, 13);
-    if (strlen(net.ssid) > 12) strlcat(ssid, "\xE2\x80\xA6", sizeof(ssid));
-    snprintf(buf, sizeof(buf), "%s \xC2\xB7 %d", ssid, net.rssi);
+    strlcpy(buf, net.ssid, 23);  // fits the line; longer names get an ellipsis
+    if (strlen(net.ssid) > 22) strlcat(buf, "\xE2\x80\xA6", sizeof(buf));
     setStep(m.steps[1], StepState::Ok, buf);
   } else if (net.wifiProblem[0]) {
     setStep(m.steps[1], StepState::Fail, net.wifiProblem);
