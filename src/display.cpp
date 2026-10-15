@@ -42,11 +42,22 @@ constexpr uint32_t kRed = 0xF87171u;
 constexpr uint32_t kAmber = 0xFBBF24u;
 constexpr uint32_t kGreen = 0x4ADE80u;
 
-uint32_t rangeColor(BgRange r) {
-  switch (r) {
+// Main-screen colours. Night colours keep amber and red for out-of-range
+// readings, so they're the only bright colour on a dark screen; the clock is
+// a neutral warm grey that can't be mistaken for a warning.
+struct Palette {
+  uint32_t clock, dim, divider, grey, green;
+};
+constexpr Palette kDayPalette = {kClockColor, kDim, kDivider, kGrey, kGreen};
+constexpr Palette kNightPalette = {0x8C8379u, 0x5F5952u, 0x1C1B1Au, 0x4A4642u, 0x2E7D4Fu};
+
+const Palette& palette(const ScreenModel& m) { return m.night ? kNightPalette : kDayPalette; }
+
+uint32_t rangeColor(const ScreenModel& m) {
+  switch (m.range) {
     case BgRange::Urgent: return kRed;
     case BgRange::Warning: return kAmber;
-    default: return kGreen;
+    default: return palette(m).green;
   }
 }
 
@@ -185,28 +196,29 @@ bool gProgressShown = false;
 void drawTopLine(const ScreenModel& m) {
   renderRegion(kTopY, kTopH, [&](LGFX_Sprite& s, int oy) {
     int cy = oy + kTopH / 2;
-    drawText(s, gTextFace, m.date, 0, cy, Align::Left, kDim);
-    drawText(s, gTextFace, m.temp, kContentW, cy, Align::Right, kDim);
+    drawText(s, gTextFace, m.date, 0, cy, Align::Left, palette(m).dim);
+    drawText(s, gTextFace, m.temp, kContentW, cy, Align::Right, palette(m).dim);
   });
 }
 
 void drawClock(const ScreenModel& m) {
   renderRegion(kClockY, kClockH, [&](LGFX_Sprite& s, int oy) {
-    drawText(s, gClockFace, m.time, kContentW / 2, oy + kClockH / 2, Align::Center, kClockColor);
+    drawText(s, gClockFace, m.time, kContentW / 2, oy + kClockH / 2, Align::Center, palette(m).clock);
   });
 }
 
 void drawStrip(const ScreenModel& m) {
   renderRegion(kStripY, kStripH, [&](LGFX_Sprite& s, int oy) {
+    const Palette& p = palette(m);
     int cy = oy + kBgCenterY;
     if (!m.hasBg) {
-      drawText(s, gBgFace, "---", 0, cy, Align::Left, kGrey);
-      drawText(s, gSmallFace, m.age, kContentW, oy + kAgeCenterY, Align::Right, m.ageAlert ? kRed : kDim);
+      drawText(s, gBgFace, "---", 0, cy, Align::Left, p.grey);
+      drawText(s, gSmallFace, m.age, kContentW, oy + kAgeCenterY, Align::Right, m.ageAlert ? kRed : p.dim);
       return;
     }
-    uint32_t color = m.stale ? kGrey : rangeColor(m.range);
+    uint32_t color = m.stale ? p.grey : rangeColor(m);
     int w = drawText(s, gBgFace, m.bg, 0, cy, Align::Left, color);
-    if (m.stale) s.fillRect(0, cy - 2, w, 4, kGrey);  // strike-through
+    if (m.stale) s.fillRect(0, cy - 2, w, 4, p.grey);  // strike-through
     drawTrend(s, m.trend, w + kArrowGap, cy, color);
 
     if (m.delta[0]) {
@@ -219,7 +231,7 @@ void drawStrip(const ScreenModel& m) {
       drawText(s, gDeltaFace, delta, kContentW, oy + kDeltaCenterY, Align::Right, color);
     }
     drawText(s, gSmallFace, m.age, kContentW, oy + kAgeCenterY, Align::Right,
-             m.ageAlert ? kRed : kDim);
+             m.ageAlert ? kRed : p.dim);
   });
 }
 
@@ -375,10 +387,10 @@ void displaySplash(const SplashModel& m, const char* version) {
 
 void displayUpdate(const ScreenModel& m) {
   if (!gBand.getBuffer()) return;
-  bool full = gFullRedraw || gDebugShown;
+  bool full = gFullRedraw || gDebugShown || m.night != gShown.night;
   if (full) {
     M5.Display.fillScreen(kBg);
-    M5.Display.drawFastHLine(kPadX, kDividerY, kContentW, kDivider);
+    M5.Display.drawFastHLine(kPadX, kDividerY, kContentW, palette(m).divider);
   }
   if (full || strcmp(m.date, gShown.date) || strcmp(m.temp, gShown.temp)) drawTopLine(m);
   if (full || strcmp(m.time, gShown.time)) drawClock(m);

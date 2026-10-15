@@ -124,6 +124,7 @@ bool loadConfig(const char* path, AppConfig& cfg) {
   r.hhmm("night_start", cfg.nightStart);
   r.hhmm("night_end", cfg.nightEnd);
   if (r.integer("night_brightness", v)) cfg.nightBrightness = clampPercent(v, cfg.nightBrightness);
+  if (r.integer("night_colours", v) && v >= 0 && v <= 2) cfg.nightColours = v;
 
   for (int i = 0; i < kMaxWifi; i++) {
     char section[8];
@@ -192,6 +193,7 @@ bool saveConfig(const char* path, const AppConfig& cfg) {
   ini.set("config", "night_start", fmtHHMM(cfg.nightStart));
   ini.set("config", "night_end", fmtHHMM(cfg.nightEnd));
   ini.set("config", "night_brightness", String(cfg.nightBrightness));
+  ini.set("config", "night_colours", String(cfg.nightColours));
 
   ini.removeSectionsStartingWith("wlan");
   for (int i = 0; i < cfg.wifiCount; i++) {

@@ -31,6 +31,7 @@ struct AppConfig {
   int nightStart = 22 * 60;  // minutes after midnight
   int nightEnd = 7 * 60;
   int nightBrightness = 5;   // percent
+  int nightColours = 0;      // 0 standard, 1 night colours always, 2 during night hours
 
   // [wlanN]
   int wifiCount = 0;

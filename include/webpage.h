@@ -107,6 +107,10 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 <div><label for="b2">Level 2 %</label><input id="b2" type="number" min="1" max="100" inputmode="numeric"></div>
 <div><label for="b3">Level 3 %</label><input id="b3" type="number" min="1" max="100" inputmode="numeric"></div>
 </div>
+<label for="nightColours">Colours</label>
+<select id="nightColours"><option value="0">Standard</option><option value="1">Night colours</option>
+<option value="2">Night colours during night hours</option></select>
+<p class="hint">Night colours: a warm grey clock and a dim green reading. High and low readings stay bright amber and red.</p>
 <label class="switch"><span><b>Dim at night</b><br><span class="hint">Off: the level you pick stays put, day and night.</span></span>
 <input type="checkbox" id="nightMode" role="switch"><i></i></label>
 <fieldset id="night"><div class="row3">
@@ -114,7 +118,7 @@ padding:10px 14px;min-height:44px;cursor:pointer}
 <div><label for="nightEnd">Until</label><input id="nightEnd" type="time"></div>
 <div><label for="nightB">Night %</label><input id="nightB" type="number" min="0" max="100" inputmode="numeric"></div>
 </div>
-<p class="hint">Between these times the screen dims to the night level; any button brings it back for 30 s.</p></fieldset>
+<p class="hint">Night hours are used by Dim at night and by the night-hours colours option. When dimmed, any button brings the screen back for 30 s.</p></fieldset>
 </section>
 
 <section><h2>Clock</h2>
@@ -200,7 +204,7 @@ async function load(){
   thr.forEach(k=>$(k).value=cfg.showMgdl?cfg[k]:Number(cfg[k]).toFixed(1));
   $('stale').value=cfg.staleMinutes;setOffset(cfg.tempOffset);
   ['b1','b2','b3'].forEach((k,i)=>$(k).value=cfg.brightness[i]);
-  $('nightMode').checked=cfg.nightMode;$('night').disabled=!cfg.nightMode;$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
+  $('nightMode').checked=cfg.nightMode;$('nightColours').value=cfg.nightColours;syncNight();$('nightStart').value=cfg.nightStart;$('nightEnd').value=cfg.nightEnd;$('nightB').value=cfg.nightBrightness;
   $('timeFormat').value=cfg.timeFormat;$('dateFormat').value=cfg.dateFormat;
   $('tz').value=cfg.tz;syncTz();
   const w=cfg.wifi[0]||{ssid:'',hasPass:false};
@@ -219,14 +223,16 @@ $('unit').onchange=()=>{const toMg=$('unit').value==='1';
   thr.forEach(k=>{const v=parseFloat($(k).value);if(!isNaN(v))$(k).value=toMg?Math.round(v*18):(v/18).toFixed(1)})};
 $('tzPreset').onchange=()=>{if($('tzPreset').value){$('tz').value=$('tzPreset').value;$('tz').style.display='none'}
   else{$('tz').style.display='block';$('tz').focus()}};
-$('nightMode').onchange=()=>$('night').disabled=!$('nightMode').checked;
+function syncNight(){$('night').disabled=!$('nightMode').checked&&$('nightColours').value!=='2';
+  $('nightB').disabled=!$('nightMode').checked}
+$('nightMode').onchange=syncNight;$('nightColours').onchange=syncNight;
 
 function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
 
 $('save').onclick=async()=>{
   const body={nightscout:$('nightscout').value.trim(),token:$('token').value.trim(),clearToken:$('clearToken').checked,
     showMgdl:$('unit').value==='1',staleMinutes:+$('stale').value,tempOffset:parseFloat($('tempOffset').value),
-    brightness:['b1','b2','b3'].map(k=>+$(k).value),nightMode:$('nightMode').checked,nightBrightness:+$('nightB').value,
+    brightness:['b1','b2','b3'].map(k=>+$(k).value),nightMode:$('nightMode').checked,nightColours:+$('nightColours').value,nightBrightness:+$('nightB').value,
     nightStart:$('nightStart').value,nightEnd:$('nightEnd').value,
     timeFormat:+$('timeFormat').value,dateFormat:+$('dateFormat').value,tz:$('tz').value.trim(),
     wifi:[{ssid:$('ssid').value.trim(),pass:$('wpass').value,

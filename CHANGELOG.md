@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 — 2026-10-15
+
+- **Night colours** (`night_colours`): a warm grey clock, date and temperature, and a dim green
+  reading when in range. High and low readings stay bright amber and red, so at night they're the
+  only bright thing on the screen. Choose Standard, Night colours (always) or Night colours during
+  night hours on the settings page, under Brightness.
+- Night hours (`night_start`/`night_end`) are now shared by night dimming and night colours.
+
 ## 1.4.1 — 2026-10-15
 
 - Old M5_NightscoutMon settings files without a `tz` line now get automatic summer time:

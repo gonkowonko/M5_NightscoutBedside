@@ -56,8 +56,9 @@ bool mountSd() {
   return SD.begin(GPIO_NUM_4, SPI, 25000000, "/sd", 4);
 }
 
-bool isNight() {
-  if (!gCfg.nightEnabled || !timeIsValid() || gCfg.nightStart == gCfg.nightEnd) return false;
+// Between night_start and night_end (used by night dimming and night colours).
+bool inNightHours() {
+  if (!timeIsValid() || gCfg.nightStart == gCfg.nightEnd) return false;
   time_t t = time(nullptr);
   tm lt;
   localtime_r(&t, &lt);
@@ -68,7 +69,7 @@ bool isNight() {
 
 bool isDimmed(uint32_t now) {
   bool awake = gPressedOnce && now - gLastPress < kWakeMs;
-  return isNight() && !awake;
+  return gCfg.nightEnabled && inNightHours() && !awake;
 }
 
 int targetBrightness(uint32_t now) {
@@ -136,6 +137,7 @@ ScreenModel buildModel() {
   ScreenModel m;
   time_t now = time(nullptr);
   bool timeOk = timeIsValid();
+  m.night = gCfg.nightColours == 1 || (gCfg.nightColours == 2 && inNightHours());
 
   if (timeOk) {
     tm lt;
@@ -304,7 +306,7 @@ void showStatusPage(uint32_t now) {
   else
     line("Time: not synced  TZ %s", gCfg.tz);
   line("Brightness: %d%% (level %d)%s", targetBrightness(now), gLevel + 1,
-       !gCfg.nightEnabled ? "" : isNight() ? ", night dim on" : ", night dim off-hours");
+       !gCfg.nightEnabled ? "" : inNightHours() ? ", night dim on" : ", night dim off-hours");
   if (sensorFound())
     line("Sensor: %.1f C (raw %.1f), %.0f %%RH", sensorTemperature() + gCfg.tempOffset,
          sensorTemperature(), sensorHumidity());
@@ -445,6 +447,7 @@ void applySettings(const AppConfig& s) {
   gCfg.nightStart = s.nightStart;
   gCfg.nightEnd = s.nightEnd;
   gCfg.nightBrightness = s.nightBrightness;
+  gCfg.nightColours = s.nightColours;
   gAppliedBrightness = -1;  // re-evaluate on the next loop
   displayInvalidate();
 }

@@ -23,6 +23,7 @@ struct ScreenModel {
   bool stale = false;
   char age[20] = "";    // "3 min ago" / "just now" / "Refreshing…"
   bool ageAlert = false;  // age line in red (stale, or a failed refresh)
+  bool night = false;     // night colours: warm grey text, dim green in range
 };
 
 void displayBegin();  // after M5.begin()

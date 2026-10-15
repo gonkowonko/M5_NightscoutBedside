@@ -51,6 +51,8 @@ using made-up example data.*
 - **One-click updates:** the clock checks GitHub for new releases every 2 days. Press *Install* on the
   settings page and it downloads, verifies and installs the new version.
 - **Optional night dimming** between set hours. Any button brings the brightness back for 30 s.
+- **Night colours** (optional, always or just at night): a warm grey clock and a dim green reading, so only a
+  high or low reading stands out.
 - **Automatic summer time** (BST/GMT by default) via NTP.
 - **Status and log pages** on the device, showing what went wrong overnight (Wi-Fi drops, Nightscout errors, stale data).
 - Keeps working through network blips: it shows the last good reading and never reboot-loops.
@@ -240,8 +242,9 @@ New in this firmware (ignored by the original):
 | `stale_minutes` | `10` | Readings older than this are shown as stale |
 | `temp_offset` | `0` | Added to the temperature sensor reading, in °C (e.g. `-3` if it reads high) |
 | `night_mode` | `0` | `1` turns night dimming on |
-| `night_start`, `night_end` | `22:00`, `07:00` | Night dimming hours (local time) |
+| `night_start`, `night_end` | `22:00`, `07:00` | Night hours (local time), for dimming and night colours |
 | `night_brightness` | `5` | Brightness during the night, in % (`0` = backlight off) |
+| `night_colours` | `0` | `1` = night colours always, `2` = only during night hours. A warm grey clock and a dim green in-range reading; high and low stay bright amber and red. |
 
 Unknown keys are ignored, so the original firmware's sound, LED and page settings can stay in the file.
 

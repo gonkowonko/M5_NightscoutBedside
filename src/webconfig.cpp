@@ -83,6 +83,7 @@ void handleGetConfig() {
   doc["nightBrightness"] = c.nightBrightness;
   doc["nightStart"] = hhmm(c.nightStart);
   doc["nightEnd"] = hhmm(c.nightEnd);
+  doc["nightColours"] = c.nightColours;
   doc["timeFormat"] = c.timeFormat;
   doc["dateFormat"] = c.dateFormat;
   doc["tz"] = c.tz;
@@ -167,6 +168,8 @@ void handlePostConfig() {
   if (next.nightBrightness < 0 || next.nightBrightness > 100) return sendError("Night brightness must be 0–100%");
   if (!parseHhmm(in["nightStart"] | "", next.nightStart) || !parseHhmm(in["nightEnd"] | "", next.nightEnd))
     return sendError("Night times must be HH:MM");
+  next.nightColours = in["nightColours"] | -1;
+  if (next.nightColours < 0 || next.nightColours > 2) return sendError("Colours must be 0, 1 or 2");
 
   next.timeFormat = (in["timeFormat"] | 0) == 1 ? 1 : 0;
   next.dateFormat = (in["dateFormat"] | 0) == 1 ? 1 : 0;
